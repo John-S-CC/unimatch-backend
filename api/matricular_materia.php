@@ -1,9 +1,21 @@
 <?php
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
+header("Access-Control-Allow-Methods: POST, OPTIONS");
 header("Content-Type: application/json; charset=UTF-8");
 
+if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") {
+    http_response_code(200);
+    exit;
+}
+
 require_once "../configuracion/database.php";
+require_once "../middleware/AuthMiddleware.php";
 require_once "../servicios/validadores/ValidadorCupos.php";
 require_once "../servicios/validadores/ValidadorHorarios.php";
+
+$usuario = AuthMiddleware::verificar();
+$usuarioId = (int) $usuario->id;
 
 if ($_SERVER["REQUEST_METHOD"] !== "POST") {
     echo json_encode([
@@ -13,13 +25,20 @@ if ($_SERVER["REQUEST_METHOD"] !== "POST") {
     exit;
 }
 
-$usuarioId = isset($_POST["usuario_id"]) ? (int) $_POST["usuario_id"] : 0;
-$grupoId = isset($_POST["grupo_id"]) ? (int) $_POST["grupo_id"] : 0;
+$input = json_decode(file_get_contents("php://input"), true);
 
-if ($usuarioId <= 0 || $grupoId <= 0) {
+$grupoId = 0;
+
+if (isset($_POST["grupo_id"])) {
+    $grupoId = (int) $_POST["grupo_id"];
+} elseif (is_array($input) && isset($input["grupo_id"])) {
+    $grupoId = (int) $input["grupo_id"];
+}
+
+if ($grupoId <= 0) {
     echo json_encode([
         "ok" => false,
-        "mensaje" => "Datos incompletos o inválidos."
+        "mensaje" => "Datos incompletos o inválidos. No llegó el grupo_id."
     ]);
     exit;
 }
@@ -32,29 +51,17 @@ try {
         throw new Exception("No fue posible conectar con la base de datos.");
     }
 
-    // Verificar si el usuario existe
-    $sqlUsuario = "SELECT id_usuario FROM usuarios WHERE id_usuario = ?";
-    $stmtUsuario = $conn->prepare($sqlUsuario);
-    $stmtUsuario->bind_param("i", $usuarioId);
-    $stmtUsuario->execute();
-    $resUsuario = $stmtUsuario->get_result();
-
-    if ($resUsuario->num_rows === 0) {
-        echo json_encode([
-            "ok" => false,
-            "mensaje" => "El usuario no existe."
-        ]);
-        exit;
-    }
-
-    // Verificar si el grupo existe
-    $sqlGrupo = "SELECT id_grupo FROM grupos WHERE id_grupo = ?";
+    $sqlGrupo = "
+        SELECT g.id_grupo, g.id_materia
+        FROM grupos g
+        WHERE g.id_grupo = ?
+    ";
     $stmtGrupo = $conn->prepare($sqlGrupo);
     $stmtGrupo->bind_param("i", $grupoId);
     $stmtGrupo->execute();
-    $resGrupo = $stmtGrupo->get_result();
+    $grupo = $stmtGrupo->get_result()->fetch_assoc();
 
-    if ($resGrupo->num_rows === 0) {
+    if (!$grupo) {
         echo json_encode([
             "ok" => false,
             "mensaje" => "El grupo no existe."
@@ -62,16 +69,16 @@ try {
         exit;
     }
 
-    // Verificar si ya está matriculado activamente
-    $sqlDuplicado = "SELECT id_matricula 
-                     FROM matriculas 
-                     WHERE usuario_id = ? AND grupo_id = ? AND estado = 'activa'";
-    $stmtDuplicado = $conn->prepare($sqlDuplicado);
-    $stmtDuplicado->bind_param("ii", $usuarioId, $grupoId);
-    $stmtDuplicado->execute();
-    $resDuplicado = $stmtDuplicado->get_result();
+    $sqlYaEnGrupo = "
+        SELECT id_matricula
+        FROM matriculas
+        WHERE usuario_id = ? AND grupo_id = ? AND estado = 'activa'
+    ";
+    $stmtYaEnGrupo = $conn->prepare($sqlYaEnGrupo);
+    $stmtYaEnGrupo->bind_param("ii", $usuarioId, $grupoId);
+    $stmtYaEnGrupo->execute();
 
-    if ($resDuplicado->num_rows > 0) {
+    if ($stmtYaEnGrupo->get_result()->num_rows > 0) {
         echo json_encode([
             "ok" => false,
             "mensaje" => "Ya estás matriculado en este grupo."
@@ -79,30 +86,46 @@ try {
         exit;
     }
 
-    // Validar cupos
-    if (class_exists("ValidadorCupos") && method_exists("ValidadorCupos", "hayCupo")) {
-        if (!ValidadorCupos::hayCupo($conn, $grupoId)) {
-            echo json_encode([
-                "ok" => false,
-                "mensaje" => "No hay cupos disponibles para este grupo."
-            ]);
-            exit;
-        }
+    $sqlMismaMateria = "
+        SELECT m.id_matricula
+        FROM matriculas m
+        INNER JOIN grupos g ON g.id_grupo = m.grupo_id
+        WHERE m.usuario_id = ?
+          AND m.estado = 'activa'
+          AND g.id_materia = ?
+    ";
+    $stmtMismaMateria = $conn->prepare($sqlMismaMateria);
+    $stmtMismaMateria->bind_param("ii", $usuarioId, $grupo["id_materia"]);
+    $stmtMismaMateria->execute();
+
+    if ($stmtMismaMateria->get_result()->num_rows > 0) {
+        echo json_encode([
+            "ok" => false,
+            "mensaje" => "Ya tienes una matrícula activa en esta materia."
+        ]);
+        exit;
     }
 
-    // Validar choque de horarios
-    if (class_exists("ValidadorHorarios") && method_exists("ValidadorHorarios", "hayCruce")) {
-        if (ValidadorHorarios::hayCruce($conn, $usuarioId, $grupoId)) {
-            echo json_encode([
-                "ok" => false,
-                "mensaje" => "Existe cruce de horario con otra materia matriculada."
-            ]);
-            exit;
-        }
+    if (!ValidadorCupos::hayCupo($conn, $grupoId)) {
+        echo json_encode([
+            "ok" => false,
+            "mensaje" => "No hay cupos disponibles para este grupo."
+        ]);
+        exit;
     }
 
-    $sqlInsert = "INSERT INTO matriculas (usuario_id, grupo_id, fecha_matricula, estado)
-                  VALUES (?, ?, NOW(), 'activa')";
+    if (method_exists("ValidadorHorarios", "hayCruce") && ValidadorHorarios::hayCruce($conn, $usuarioId, $grupoId)) {
+        echo json_encode([
+            "ok" => false,
+            "mensaje" => "Existe cruce de horario con otra materia matriculada."
+        ]);
+        exit;
+    }
+
+    $sqlInsert = "
+        INSERT INTO matriculas (usuario_id, grupo_id, fecha_matricula, estado)
+        VALUES (?, ?, NOW(), 'activa')
+    ";
     $stmtInsert = $conn->prepare($sqlInsert);
     $stmtInsert->bind_param("ii", $usuarioId, $grupoId);
 
@@ -116,6 +139,7 @@ try {
     ]);
 
 } catch (Throwable $e) {
+    http_response_code(500);
     echo json_encode([
         "ok" => false,
         "mensaje" => "Error del servidor: " . $e->getMessage()

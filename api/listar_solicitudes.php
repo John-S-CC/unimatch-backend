@@ -1,70 +1,69 @@
 <?php
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
+header("Access-Control-Allow-Methods: GET, OPTIONS");
+header("Content-Type: application/json; charset=UTF-8");
 
-header("Content-Type: application/json");
-
-require_once "../configuracion/database.php";
-
-$db = new Database();
-$conn = $db->connect();
-
-$usuario = $_GET['usuario_id'] ?? null;
-
-if(!$usuario){
-
-    echo json_encode([
-        "ok"=>false,
-        "mensaje"=>"Usuario requerido"
-    ]);
-
+if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") {
+    http_response_code(200);
     exit;
 }
 
-$sql="
-SELECT
-s.id_solicitud,
-s.tipo_solicitud,
-s.estado,
-s.fecha,
-m1.nombre AS materia_origen,
-m2.nombre AS materia_destino,
-g1.id_grupo AS grupo_origen,
-g2.id_grupo AS grupo_destino
-FROM solicitudes s
+require_once "../configuracion/database.php";
+require_once "../middleware/AuthMiddleware.php";
 
-LEFT JOIN materias m1
-ON s.materia_origen=m1.id_materia
+$usuario = AuthMiddleware::verificar();
+$usuarioId = (int) $usuario->id;
 
-LEFT JOIN materias m2
-ON s.materia_destino=m2.id_materia
-
-LEFT JOIN grupos g1
-ON s.grupo_origen=g1.id_grupo
-
-LEFT JOIN grupos g2
-ON s.grupo_destino=g2.id_grupo
-
-WHERE s.usuario_id=?
-
-ORDER BY s.fecha DESC
-";
-
-$stmt=$conn->prepare($sql);
-
-$stmt->bind_param("i",$usuario);
-
-$stmt->execute();
-
-$result=$stmt->get_result();
-
-$solicitudes=[];
-
-while($row=$result->fetch_assoc()){
-
-    $solicitudes[]=$row;
-
+if ($_SERVER["REQUEST_METHOD"] !== "GET") {
+    echo json_encode([
+        "ok" => false,
+        "mensaje" => "Método no permitido."
+    ]);
+    exit;
 }
 
-echo json_encode([
-    "ok"=>true,
-    "solicitudes"=>$solicitudes
-]);
+try {
+    $db = new Database();
+    $conn = $db->connect();
+
+    if (!$conn) {
+        throw new Exception("No fue posible conectar con la base de datos.");
+    }
+
+    $sql = "SELECT 
+                id_solicitud,
+                tipo_solicitud,
+                grupo_origen,
+                grupo_destino,
+                materia_origen,
+                materia_destino,
+                estado,
+                fecha_solicitud
+            FROM solicitudes
+            WHERE usuario_id = ?
+            ORDER BY fecha_solicitud DESC";
+
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $usuarioId);
+    $stmt->execute();
+
+    $result = $stmt->get_result();
+    $solicitudes = [];
+
+    while ($row = $result->fetch_assoc()) {
+        $solicitudes[] = $row;
+    }
+
+    echo json_encode([
+        "ok" => true,
+        "solicitudes" => $solicitudes
+    ]);
+
+} catch (Throwable $e) {
+    http_response_code(500);
+    echo json_encode([
+        "ok" => false,
+        "mensaje" => "Error del servidor: " . $e->getMessage()
+    ]);
+}
