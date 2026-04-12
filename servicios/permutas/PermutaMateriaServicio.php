@@ -1,8 +1,8 @@
 <?php
 
-require_once __DIR__ . '/../Repositorios/SolicitudesRepositorio.php';
-require_once __DIR__ . '/../Repositorios/MatriculasRepositorio.php';
-require_once __DIR__ . '/../Validadores/ValidadorHorarios.php';
+require_once __DIR__ . '/../repositorios/SolicitudesRepositorio.php';
+require_once __DIR__ . '/../repositorios/MatriculasRepositorio.php';
+require_once __DIR__ . '/../validadores/ValidadorHorarios.php';
 
 class PermutaMateriaServicio {
 
@@ -18,12 +18,12 @@ class PermutaMateriaServicio {
             return false;
         }
 
-        if(
-            ValidadorHorarios::tieneConflicto($conn, $solicitud['usuario_id'], $permuta['grupo_origen']) ||
-            ValidadorHorarios::tieneConflicto($conn, $permuta['usuario_id'], $solicitud['grupo_origen'])
-        ){
-            return false;
-        }
+        if (
+    ValidadorHorarios::tieneConflicto($conn, $solicitud['usuario_id'], $permuta['grupo_origen'], $solicitud['grupo_origen']) ||
+    ValidadorHorarios::tieneConflicto($conn, $permuta['usuario_id'], $solicitud['grupo_origen'], $permuta['grupo_origen'])
+            ) {
+           return false;
+       }
 
         MatriculasRepositorio::intercambiarMaterias(
             $conn,

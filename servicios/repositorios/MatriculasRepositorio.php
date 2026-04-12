@@ -2,46 +2,70 @@
 
 class MatriculasRepositorio {
 
-    public static function intercambiarGrupos($conn,$u1,$u2,$g1,$g2){
+    public static function intercambiarGrupos($conn, $sol1, $sol2) {
 
-        $sql="UPDATE matriculas SET grupo_id=? WHERE usuario_id=?";
-
-        $stmt=$conn->prepare($sql);
-        $stmt->bind_param("ii",$g1,$u1);
-        $stmt->execute();
-
-        $stmt=$conn->prepare($sql);
-        $stmt->bind_param("ii",$g2,$u2);
-        $stmt->execute();
-    }
-
-    public static function intercambiarMaterias($conn,$sol1,$sol2){
-
-        self::actualizarGrupo(
+        self::actualizarGrupoActivo(
             $conn,
             $sol1['usuario_id'],
+            $sol1['grupo_origen'],
             $sol1['grupo_destino']
         );
 
-        self::actualizarGrupo(
+        self::actualizarGrupoActivo(
             $conn,
             $sol2['usuario_id'],
+            $sol2['grupo_origen'],
             $sol2['grupo_destino']
         );
     }
 
-    public static function actualizarGrupo($conn,$usuario,$grupo){
+    public static function intercambiarMaterias($conn, $sol1, $sol2) {
 
-        $sql="
-        UPDATE matriculas
-        SET grupo_id=?
-        WHERE usuario_id=?
+        self::actualizarGrupoActivo(
+            $conn,
+            $sol1['usuario_id'],
+            $sol1['grupo_origen'],
+            $sol1['grupo_destino']
+        );
+
+        self::actualizarGrupoActivo(
+            $conn,
+            $sol2['usuario_id'],
+            $sol2['grupo_origen'],
+            $sol2['grupo_destino']
+        );
+    }
+
+    public static function actualizarGrupo($conn, $usuario, $grupo) {
+
+        $sql = "
+            UPDATE matriculas
+            SET grupo_id = ?
+            WHERE usuario_id = ?
+              AND estado = 'activa'
+            LIMIT 1
         ";
 
-        $stmt=$conn->prepare($sql);
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("ii", $grupo, $usuario);
 
-        $stmt->bind_param("ii",$grupo,$usuario);
+        return $stmt->execute();
+    }
 
-        $stmt->execute();
+    public static function actualizarGrupoActivo($conn, $usuarioId, $grupoOrigen, $grupoDestino) {
+
+        $sql = "
+            UPDATE matriculas
+            SET grupo_id = ?
+            WHERE usuario_id = ?
+              AND grupo_id = ?
+              AND estado = 'activa'
+            LIMIT 1
+        ";
+
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("iii", $grupoDestino, $usuarioId, $grupoOrigen);
+
+        return $stmt->execute();
     }
 }
