@@ -1,60 +1,36 @@
 <?php
-header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Headers: Content-Type, Authorization");
-header("Access-Control-Allow-Methods: POST, OPTIONS");
-header("Content-Type: application/json; charset=UTF-8");
+require_once __DIR__ . "/_common.php";
+api_set_common_headers("POST, OPTIONS");
+api_handle_preflight();
+api_require_method("POST");
 
-if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") {
-    http_response_code(200);
-    exit;
-}
-
-require_once "../configuracion/database.php";
-require_once "../middleware/AuthMiddleware.php";
-require_once "../servicios/validadores/ValidadorCupos.php";
-require_once "../servicios/validadores/ValidadorHorarios.php";
+require_once __DIR__ . "/../configuracion/database.php";
+require_once __DIR__ . "/../middleware/AuthMiddleware.php";
+require_once __DIR__ . "/../servicios/validadores/ValidadorCupos.php";
+require_once __DIR__ . "/../servicios/validadores/ValidadorHorarios.php";
 
 $usuario = AuthMiddleware::verificar();
-$usuarioId = (int) $usuario->id;
-
-if ($_SERVER["REQUEST_METHOD"] !== "POST") {
-    echo json_encode([
-        "ok" => false,
-        "mensaje" => "Método no permitido."
-    ]);
-    exit;
-}
-
-$input = json_decode(file_get_contents("php://input"), true);
-
-$grupoId = 0;
-
-if (isset($_POST["grupo_id"])) {
-    $grupoId = (int) $_POST["grupo_id"];
-} elseif (is_array($input) && isset($input["grupo_id"])) {
-    $grupoId = (int) $input["grupo_id"];
-}
+$usuarioId = (int) ($usuario->id ?? 0);
+$input = api_read_input();
+$grupoId = api_int_value($input, "grupo_id");
 
 if ($grupoId <= 0) {
-    echo json_encode([
+    api_json([
         "ok" => false,
-        "mensaje" => "Datos incompletos o inválidos. No llegó el grupo_id."
-    ]);
-    exit;
+        "mensaje" => "Debes indicar un grupo válido."
+    ], 422);
 }
 
 try {
-    $db = new Database();
-    $conn = $db->connect();
-
-    if (!$conn) {
-        throw new Exception("No fue posible conectar con la base de datos.");
-    }
+    $conn = api_connect_db();
+    $conn->begin_transaction();
 
     $sqlGrupo = "
-        SELECT g.id_grupo, g.id_materia
+        SELECT g.id_grupo, g.id_materia, ma.nombre AS materia
         FROM grupos g
+        INNER JOIN materias ma ON ma.id_materia = g.id_materia
         WHERE g.id_grupo = ?
+        LIMIT 1
     ";
     $stmtGrupo = $conn->prepare($sqlGrupo);
     $stmtGrupo->bind_param("i", $grupoId);
@@ -62,28 +38,29 @@ try {
     $grupo = $stmtGrupo->get_result()->fetch_assoc();
 
     if (!$grupo) {
-        echo json_encode([
+        api_json([
             "ok" => false,
-            "mensaje" => "El grupo no existe."
-        ]);
-        exit;
+            "mensaje" => "El grupo seleccionado no existe."
+        ], 404);
     }
 
     $sqlYaEnGrupo = "
         SELECT id_matricula
         FROM matriculas
-        WHERE usuario_id = ? AND grupo_id = ? AND estado = 'activa'
+        WHERE usuario_id = ?
+          AND grupo_id = ?
+          AND estado = 'activa'
+        LIMIT 1
     ";
     $stmtYaEnGrupo = $conn->prepare($sqlYaEnGrupo);
     $stmtYaEnGrupo->bind_param("ii", $usuarioId, $grupoId);
     $stmtYaEnGrupo->execute();
 
     if ($stmtYaEnGrupo->get_result()->num_rows > 0) {
-        echo json_encode([
+        api_json([
             "ok" => false,
             "mensaje" => "Ya estás matriculado en este grupo."
-        ]);
-        exit;
+        ], 409);
     }
 
     $sqlMismaMateria = "
@@ -93,33 +70,31 @@ try {
         WHERE m.usuario_id = ?
           AND m.estado = 'activa'
           AND g.id_materia = ?
+        LIMIT 1
     ";
     $stmtMismaMateria = $conn->prepare($sqlMismaMateria);
     $stmtMismaMateria->bind_param("ii", $usuarioId, $grupo["id_materia"]);
     $stmtMismaMateria->execute();
 
     if ($stmtMismaMateria->get_result()->num_rows > 0) {
-        echo json_encode([
+        api_json([
             "ok" => false,
             "mensaje" => "Ya tienes una matrícula activa en esta materia."
-        ]);
-        exit;
+        ], 409);
     }
 
     if (!ValidadorCupos::hayCupo($conn, $grupoId)) {
-        echo json_encode([
+        api_json([
             "ok" => false,
             "mensaje" => "No hay cupos disponibles para este grupo."
-        ]);
-        exit;
+        ], 409);
     }
 
-    if (method_exists("ValidadorHorarios", "hayCruce") && ValidadorHorarios::hayCruce($conn, $usuarioId, $grupoId)) {
-        echo json_encode([
+    if (ValidadorHorarios::tieneConflicto($conn, $usuarioId, $grupoId)) {
+        api_json([
             "ok" => false,
-            "mensaje" => "Existe cruce de horario con otra materia matriculada."
-        ]);
-        exit;
+            "mensaje" => "Existe un cruce de horario con otra materia activa."
+        ], 409);
     }
 
     $sqlInsert = "
@@ -133,15 +108,44 @@ try {
         throw new Exception("No se pudo registrar la matrícula.");
     }
 
-    echo json_encode([
-        "ok" => true,
-        "mensaje" => "Matrícula realizada correctamente."
-    ]);
+    $conn->commit();
 
+    $evento = null;
+    if (file_exists(__DIR__ . "/../eventos/MotorEventos.php")) {
+        require_once __DIR__ . "/../eventos/MotorEventos.php";
+        if (class_exists("MotorEventos") && method_exists("MotorEventos", "procesarEvento")) {
+            try {
+                $evento = MotorEventos::procesarEvento($conn, "matricula_nueva", [
+                    "usuario_id" => $usuarioId,
+                    "grupo_id" => $grupoId
+                ]);
+            } catch (Throwable $eventoError) {
+                $evento = [
+                    "ok" => false,
+                    "mensaje" => $eventoError->getMessage()
+                ];
+            }
+        }
+    }
+
+    api_json([
+        "ok" => true,
+        "mensaje" => "Matrícula realizada correctamente.",
+        "data" => [
+            "grupo_id" => $grupoId,
+            "materia" => $grupo["materia"] ?? null
+        ],
+        "evento" => $evento
+    ]);
 } catch (Throwable $e) {
-    http_response_code(500);
-    echo json_encode([
+    if (isset($conn) && $conn instanceof mysqli && $conn->errno === 0) {
+        try { $conn->rollback(); } catch (Throwable $ignored) {}
+    } elseif (isset($conn) && $conn instanceof mysqli) {
+        try { $conn->rollback(); } catch (Throwable $ignored) {}
+    }
+
+    api_json([
         "ok" => false,
         "mensaje" => "Error del servidor: " . $e->getMessage()
-    ]);
+    ], 500);
 }

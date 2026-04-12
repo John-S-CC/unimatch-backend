@@ -9,32 +9,27 @@ if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") {
     exit;
 }
 
-require_once "../configuracion/database.php";
-require_once "../middleware/AuthMiddleware.php";
-require_once "../motorPermutas.php";
+require_once __DIR__ . "/../configuracion/database.php";
+require_once __DIR__ . "/../middleware/AuthMiddleware.php";
+require_once __DIR__ . "/../servicios/MotorPermutas.php";
 
-$usuario = AuthMiddleware::verificar();
+AuthMiddleware::verificar();
 
 try {
     $db = new Database();
     $conn = $db->connect();
 
-    if (!$conn) {
-        throw new Exception("No fue posible conectar con la base de datos.");
-    }
-
-    $procesadas = MotorPermutas::procesar($conn);
+    $resultado = MotorPermutas::procesar($conn);
 
     echo json_encode([
-        "ok" => true,
-        "mensaje" => "Motor ejecutado correctamente.",
-        "procesadas" => $procesadas
+        'ok' => true,
+        'mensaje' => 'Motor ejecutado correctamente.',
+        'resultado' => $resultado
     ]);
-
 } catch (Throwable $e) {
     http_response_code(500);
     echo json_encode([
-        "ok" => false,
-        "mensaje" => "Error del servidor: " . $e->getMessage()
+        'ok' => false,
+        'mensaje' => 'Error del servidor: ' . $e->getMessage()
     ]);
 }
