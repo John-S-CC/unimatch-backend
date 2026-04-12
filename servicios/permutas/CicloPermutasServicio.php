@@ -1,78 +1,79 @@
 <?php
 
-require_once __DIR__ . '/../Repositorios/SolicitudesRepositorio.php';
-require_once __DIR__ . '/../Repositorios/MatriculasRepositorio.php';
+require_once __DIR__ . '/../repositorios/SolicitudesRepositorio.php';
+require_once __DIR__ . '/../repositorios/MatriculasRepositorio.php';
 
 class CicloPermutasServicio {
 
     public static function intentar($conn, $solicitud){
 
+        if($solicitud['tipo_solicitud'] !== 'cambio_materia'){
+            return false;
+        }
+
         $ciclo = self::buscarCiclo(
             $conn,
             $solicitud['materia_origen'],
-            $solicitud['materia_destino'],
+            $solicitud,
+            [],
             []
         );
 
-        if(!$ciclo){
+        if(!$ciclo || count($ciclo) < 2){
             return false;
         }
 
         foreach($ciclo as $sol){
-
-            MatriculasRepositorio::actualizarGrupo(
+            MatriculasRepositorio::actualizarGrupoActivo(
                 $conn,
                 $sol['usuario_id'],
+                $sol['grupo_origen'],
                 $sol['grupo_destino']
             );
-
         }
 
         foreach($ciclo as $sol){
-
-            SolicitudesRepositorio::marcarCompletada(
+            SolicitudesRepositorio::marcarSolicitudComoPermuta(
                 $conn,
                 $sol['id_solicitud']
             );
-
         }
 
         return true;
     }
 
-    private static function buscarCiclo($conn,$origen,$actual,$visitados){
+    private static function buscarCiclo($conn, $materiaInicial, $solicitudActual, $camino, $visitadas){
 
-        $visitados[]=$actual;
+        $camino[] = $solicitudActual;
+        $visitadas[] = $solicitudActual['id_solicitud'];
 
-        $solicitudes = SolicitudesRepositorio::buscarPorOrigen($conn,$actual);
+        $destinoActual = (int)$solicitudActual['materia_destino'];
 
-        foreach($solicitudes as $sol){
+        if($destinoActual === (int)$materiaInicial && count($camino) > 1){
+            return $camino;
+        }
 
-            $destino = $sol['materia_destino'];
+        $siguientes = SolicitudesRepositorio::buscarPorOrigen($conn, $destinoActual);
 
-            if($destino == $origen){
-                $visitados[]=$sol;
-                return $visitados;
+        foreach($siguientes as $sig){
+
+            if(in_array($sig['id_solicitud'], $visitadas)){
+                continue;
             }
 
-            if(!in_array($destino,$visitados)){
+            $resultado = self::buscarCiclo(
+                $conn,
+                $materiaInicial,
+                $sig,
+                $camino,
+                $visitadas
+            );
 
-                $ciclo = self::buscarCiclo(
-                    $conn,
-                    $origen,
-                    $destino,
-                    $visitados
-                );
-
-                if($ciclo){
-                    return $ciclo;
-                }
-
+            if($resultado){
+                return $resultado;
             }
-
         }
 
         return null;
     }
-
 }

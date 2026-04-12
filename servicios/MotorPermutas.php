@@ -1,32 +1,63 @@
 <?php
 
-require_once __DIR__.'/Permutas/PermutaGrupoServicio.php';
-require_once __DIR__.'/Permutas/PermutaMateriaServicio.php';
-require_once __DIR__.'/Permutas/CicloPermutasServicio.php';
-require_once __DIR__.'/Repositorios/SolicitudesRepositorio.php';
+require_once __DIR__ . '/permutas/CambioDirectoServicio.php';
+require_once __DIR__ . '/permutas/PermutasGrupoServicio.php';
+require_once __DIR__ . '/permutas/PermutaMateriaServicio.php';
+require_once __DIR__ . '/permutas/CicloPermutasServicio.php';
+require_once __DIR__ . '/repositorios/SolicitudesRepositorio.php';
 
 class MotorPermutas {
 
-    public static function procesar($conn){
+    public static function procesar($conn) {
 
         $solicitudes = SolicitudesRepositorio::pendientes($conn);
 
-        foreach($solicitudes as $solicitud){
+        $procesadas = 0;
+        $errores = [];
 
-            if(PermutaGrupoServicio::intentar($conn,$solicitud)){
-                continue;
+        foreach ($solicitudes as $solicitud) {
+
+            try {
+                $conn->begin_transaction();
+
+                $procesada = false;
+
+                if ($solicitud['tipo_solicitud'] === 'cambio_grupo' || $solicitud['tipo_solicitud'] === 'cambio_materia') {
+                    $procesada = CambioDirectoServicio::intentar($conn, $solicitud);
+                }
+
+                if (!$procesada && $solicitud['tipo_solicitud'] === 'cambio_grupo') {
+                    $procesada = PermutaGrupoServicio::intentar($conn, $solicitud);
+                }
+
+                if (!$procesada && $solicitud['tipo_solicitud'] === 'cambio_materia') {
+                    $procesada = PermutaMateriaServicio::intentar($conn, $solicitud);
+                }
+
+                if (!$procesada && $solicitud['tipo_solicitud'] === 'cambio_materia') {
+                    $procesada = CicloPermutasServicio::intentar($conn, $solicitud);
+                }
+
+                if ($procesada) {
+                    $conn->commit();
+                    $procesadas++;
+                } else {
+                    $conn->rollback();
+                }
+
+            } catch (Throwable $e) {
+                $conn->rollback();
+                $errores[] = [
+                    'id_solicitud' => $solicitud['id_solicitud'],
+                    'mensaje' => $e->getMessage()
+                ];
             }
-
-            if(PermutaMateriaServicio::intentar($conn,$solicitud)){
-                continue;
-            }
-
-            if(CicloPermutasServicio::intentar($conn,$solicitud)){
-                continue;
-            }
-
         }
 
+        return [
+            'ok' => true,
+            'procesadas' => $procesadas,
+            'errores' => $errores
+        ];
     }
-
 }
