@@ -1,48 +1,36 @@
 <?php
-header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Headers: Content-Type, Authorization");
-header("Access-Control-Allow-Methods: GET, OPTIONS");
-header("Content-Type: application/json; charset=UTF-8");
+require_once __DIR__ . "/_common.php";
+api_set_common_headers("GET, OPTIONS");
+api_handle_preflight();
+api_require_method("GET");
 
-if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") {
-    http_response_code(200);
-    exit;
-}
-
-require_once "../configuracion/database.php";
-require_once "../middleware/AuthMiddleware.php";
+require_once __DIR__ . "/../configuracion/database.php";
+require_once __DIR__ . "/../middleware/AuthMiddleware.php";
 
 $usuario = AuthMiddleware::verificar();
-$usuarioId = (int) $usuario->id;
-
-if ($_SERVER["REQUEST_METHOD"] !== "GET") {
-    echo json_encode([
-        "ok" => false,
-        "mensaje" => "Método no permitido."
-    ]);
-    exit;
-}
+$usuarioId = (int) ($usuario->id ?? 0);
 
 try {
-    $db = new Database();
-    $conn = $db->connect();
+    $conn = api_connect_db();
 
-    if (!$conn) {
-        throw new Exception("No fue posible conectar con la base de datos.");
-    }
-
-    $sql = "SELECT 
-                id_solicitud,
-                tipo_solicitud,
-                grupo_origen,
-                grupo_destino,
-                materia_origen,
-                materia_destino,
-                estado,
-                fecha_solicitud
-            FROM solicitudes
-            WHERE usuario_id = ?
-            ORDER BY fecha_solicitud DESC";
+    $sql = "
+        SELECT
+            s.id_solicitud,
+            s.tipo_solicitud,
+            s.grupo_origen,
+            s.grupo_destino,
+            s.materia_origen,
+            s.materia_destino,
+            s.estado,
+            DATE_FORMAT(s.fecha_solicitud, '%Y-%m-%d %H:%i:%s') AS fecha_solicitud,
+            mo.nombre AS nombre_materia_origen,
+            md.nombre AS nombre_materia_destino
+        FROM solicitudes s
+        LEFT JOIN materias mo ON mo.id_materia = s.materia_origen
+        LEFT JOIN materias md ON md.id_materia = s.materia_destino
+        WHERE s.usuario_id = ?
+        ORDER BY s.fecha_solicitud DESC, s.id_solicitud DESC
+    ";
 
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("i", $usuarioId);
@@ -55,15 +43,15 @@ try {
         $solicitudes[] = $row;
     }
 
-    echo json_encode([
+    api_json([
         "ok" => true,
-        "solicitudes" => $solicitudes
+        "mensaje" => count($solicitudes) ? "Solicitudes cargadas correctamente." : "No tienes solicitudes registradas.",
+        "solicitudes" => $solicitudes,
+        "data" => ["total" => count($solicitudes)]
     ]);
-
 } catch (Throwable $e) {
-    http_response_code(500);
-    echo json_encode([
+    api_json([
         "ok" => false,
         "mensaje" => "Error del servidor: " . $e->getMessage()
-    ]);
+    ], 500);
 }

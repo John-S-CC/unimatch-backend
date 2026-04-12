@@ -1,76 +1,103 @@
 <?php
-header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Headers: Content-Type, Authorization");
-header("Access-Control-Allow-Methods: POST, OPTIONS");
-header("Content-Type: application/json; charset=UTF-8");
-
-if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") {
-    http_response_code(200);
-    exit;
-}
+require_once __DIR__ . "/_common.php";
+api_set_common_headers("POST, OPTIONS");
+api_handle_preflight();
+api_require_method("POST");
 
 require_once __DIR__ . "/../configuracion/database.php";
 require_once __DIR__ . "/../middleware/AuthMiddleware.php";
 
 $usuario = AuthMiddleware::verificar();
-$usuarioId = (int) $usuario->id;
-
-if ($_SERVER["REQUEST_METHOD"] !== "POST") {
-    echo json_encode([
-        "ok" => false,
-        "mensaje" => "Método no permitido."
-    ]);
-    exit;
-}
-
-$grupoId = isset($_POST["grupo_id"]) ? (int) $_POST["grupo_id"] : 0;
+$usuarioId = (int) ($usuario->id ?? 0);
+$input = api_read_input();
+$grupoId = api_int_value($input, "grupo_id");
 
 if ($grupoId <= 0) {
-    echo json_encode([
+    api_json([
         "ok" => false,
         "mensaje" => "El grupo es obligatorio."
-    ]);
-    exit;
+    ], 422);
 }
 
 try {
-    $db = new Database();
-    $conn = $db->connect();
+    $conn = api_connect_db();
+    $conn->begin_transaction();
 
-    $sql = "UPDATE matriculas
-            SET estado = 'cancelada'
-            WHERE usuario_id = ? AND grupo_id = ? AND estado = 'activa'";
+    $sqlExiste = "
+        SELECT m.id_matricula, ma.nombre AS materia
+        FROM matriculas m
+        INNER JOIN grupos g ON g.id_grupo = m.grupo_id
+        INNER JOIN materias ma ON ma.id_materia = g.id_materia
+        WHERE m.usuario_id = ?
+          AND m.grupo_id = ?
+          AND m.estado = 'activa'
+        LIMIT 1
+    ";
+    $stmtExiste = $conn->prepare($sqlExiste);
+    $stmtExiste->bind_param("ii", $usuarioId, $grupoId);
+    $stmtExiste->execute();
+    $matricula = $stmtExiste->get_result()->fetch_assoc();
+
+    if (!$matricula) {
+        api_json([
+            "ok" => false,
+            "mensaje" => "No se encontró una matrícula activa para cancelar."
+        ], 404);
+    }
+
+    $sql = "
+        UPDATE matriculas
+        SET estado = 'cancelada'
+        WHERE usuario_id = ?
+          AND grupo_id = ?
+          AND estado = 'activa'
+        LIMIT 1
+    ";
 
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("ii", $usuarioId, $grupoId);
     $stmt->execute();
 
-    if ($stmt->affected_rows === 0) {
-        echo json_encode([
-            "ok" => false,
-            "mensaje" => "No se encontró una matrícula activa para cancelar."
-        ]);
-        exit;
+    if ($stmt->affected_rows <= 0) {
+        throw new Exception("No fue posible actualizar la matrícula.");
     }
 
+    $conn->commit();
+
+    $evento = null;
     if (file_exists(__DIR__ . "/../eventos/MotorEventos.php")) {
         require_once __DIR__ . "/../eventos/MotorEventos.php";
         if (class_exists("MotorEventos") && method_exists("MotorEventos", "procesarEvento")) {
-            MotorEventos::procesarEvento($conn, "cancelacion_materia", [
-                "usuario_id" => $usuarioId,
-                "grupo_id" => $grupoId
-            ]);
+            try {
+                $evento = MotorEventos::procesarEvento($conn, "cancelacion_materia", [
+                    "usuario_id" => $usuarioId,
+                    "grupo_id" => $grupoId
+                ]);
+            } catch (Throwable $eventoError) {
+                $evento = [
+                    "ok" => false,
+                    "mensaje" => $eventoError->getMessage()
+                ];
+            }
         }
     }
 
-    echo json_encode([
+    api_json([
         "ok" => true,
-        "mensaje" => "Matrícula cancelada correctamente."
+        "mensaje" => "Matrícula cancelada correctamente.",
+        "data" => [
+            "grupo_id" => $grupoId,
+            "materia" => $matricula["materia"] ?? null
+        ],
+        "evento" => $evento
     ]);
 } catch (Throwable $e) {
-    http_response_code(500);
-    echo json_encode([
+    if (isset($conn) && $conn instanceof mysqli) {
+        try { $conn->rollback(); } catch (Throwable $ignored) {}
+    }
+
+    api_json([
         "ok" => false,
         "mensaje" => "Error del servidor: " . $e->getMessage()
-    ]);
+    ], 500);
 }

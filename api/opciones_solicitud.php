@@ -1,27 +1,17 @@
 <?php
-header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Headers: Content-Type, Authorization");
-header("Access-Control-Allow-Methods: GET, OPTIONS");
-header("Content-Type: application/json; charset=UTF-8");
+require_once __DIR__ . "/_common.php";
+api_set_common_headers("GET, OPTIONS");
+api_handle_preflight();
+api_require_method("GET");
 
-if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") {
-    http_response_code(200);
-    exit;
-}
-
-require_once "../configuracion/database.php";
-require_once "../middleware/AuthMiddleware.php";
+require_once __DIR__ . "/../configuracion/database.php";
+require_once __DIR__ . "/../middleware/AuthMiddleware.php";
 
 $usuario = AuthMiddleware::verificar();
-$usuarioId = (int)$usuario->id;
+$usuarioId = (int) ($usuario->id ?? 0);
 
 try {
-    $db = new Database();
-    $conn = $db->connect();
-
-    if (!$conn) {
-        throw new Exception("No fue posible conectar con la base de datos.");
-    }
+    $conn = api_connect_db();
 
     $sqlInscritas = "
         SELECT
@@ -31,7 +21,7 @@ try {
             g.id_grupo,
             CONCAT(
                 ma.nombre, ' - Grupo ', g.id_grupo, ' - ',
-                GROUP_CONCAT(CONCAT(h.dia, ' ', h.hora_inicio, '-', h.hora_fin) SEPARATOR ' / ')
+                COALESCE(GROUP_CONCAT(DISTINCT CONCAT(h.dia, ' ', TIME_FORMAT(h.hora_inicio, '%H:%i'), '-', TIME_FORMAT(h.hora_fin, '%H:%i')) ORDER BY h.dia, h.hora_inicio SEPARATOR ' / '), 'Sin horario')
             ) AS etiqueta
         FROM matriculas m
         INNER JOIN grupos g ON g.id_grupo = m.grupo_id
@@ -60,39 +50,51 @@ try {
             g.id_grupo,
             CONCAT(
                 ma.nombre, ' - Grupo ', g.id_grupo, ' - ',
-                GROUP_CONCAT(CONCAT(h.dia, ' ', h.hora_inicio, '-', h.hora_fin) SEPARATOR ' / '),
-                ' - Cupos: ', 
+                COALESCE(GROUP_CONCAT(DISTINCT CONCAT(h.dia, ' ', TIME_FORMAT(h.hora_inicio, '%H:%i'), '-', TIME_FORMAT(h.hora_fin, '%H:%i')) ORDER BY h.dia, h.hora_inicio SEPARATOR ' / '), 'Sin horario'),
+                ' - Cupos: ',
                 (g.cupos - COUNT(DISTINCT mt.id_matricula))
             ) AS etiqueta,
             (g.cupos - COUNT(DISTINCT mt.id_matricula)) AS cupos_disponibles
         FROM grupos g
         INNER JOIN materias ma ON ma.id_materia = g.id_materia
         LEFT JOIN horarios h ON h.id_grupo = g.id_grupo
-        LEFT JOIN matriculas mt 
+        LEFT JOIN matriculas mt
             ON mt.grupo_id = g.id_grupo
            AND mt.estado = 'activa'
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM matriculas mu
+            WHERE mu.usuario_id = ?
+              AND mu.grupo_id = g.id_grupo
+              AND mu.estado = 'activa'
+        )
         GROUP BY ma.id_materia, ma.nombre, g.id_grupo, g.cupos
         HAVING cupos_disponibles > 0
         ORDER BY ma.nombre, g.id_grupo
     ";
 
-    $resDisponibles = $conn->query($sqlDisponibles);
+    $stmtDisponibles = $conn->prepare($sqlDisponibles);
+    $stmtDisponibles->bind_param("i", $usuarioId);
+    $stmtDisponibles->execute();
+    $resDisponibles = $stmtDisponibles->get_result();
 
     $disponibles = [];
     while ($row = $resDisponibles->fetch_assoc()) {
         $disponibles[] = $row;
     }
 
-    echo json_encode([
+    api_json([
         "ok" => true,
         "inscritas" => $inscritas,
-        "disponibles" => $disponibles
+        "disponibles" => $disponibles,
+        "data" => [
+            "inscritas_total" => count($inscritas),
+            "disponibles_total" => count($disponibles)
+        ]
     ]);
-
 } catch (Throwable $e) {
-    http_response_code(500);
-    echo json_encode([
+    api_json([
         "ok" => false,
         "mensaje" => "Error del servidor: " . $e->getMessage()
-    ]);
+    ], 500);
 }
