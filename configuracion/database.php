@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . "/env.php";
 
 class Database {
 
@@ -9,11 +10,15 @@ class Database {
     private $port;
 
     public function __construct() {
-        $this->host = getenv('UNIMATCH_DB_HOST') ?: 'localhost';
-        $this->db = getenv('UNIMATCH_DB_NAME') ?: 'unimatch';
-        $this->user = getenv('UNIMATCH_DB_USER') ?: 'root';
-        $this->pass = getenv('UNIMATCH_DB_PASS') ?: '1234';
-        $this->port = (int) (getenv('UNIMATCH_DB_PORT') ?: 3306);
+        $this->host = getenv('UNIMATCH_DB_HOST') ?: getenv('DB_HOST');
+        $this->db = getenv('UNIMATCH_DB_NAME') ?: getenv('DB_NAME');
+        $this->user = getenv('UNIMATCH_DB_USER') ?: getenv('DB_USER');
+        $this->pass = getenv('UNIMATCH_DB_PASS') ?: getenv('DB_PASS');
+        $this->port = (int) (getenv('UNIMATCH_DB_PORT') ?: getenv('DB_PORT') ?: 3306);
+
+        if (!$this->host || !$this->db || !$this->user) {
+            throw new Exception('Configuración de base de datos incompleta. Revise las variables de entorno.');
+        }
     }
 
     public function connect() {

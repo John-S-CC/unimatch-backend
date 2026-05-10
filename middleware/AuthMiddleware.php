@@ -28,7 +28,7 @@ class AuthMiddleware {
         $usuario = self::verificar();
 
         if (!isset($usuario->rol) || $usuario->rol !== $rolRequerido) {
-            self::error('No autorizado');
+            self::error('No autorizado', 403);
         }
 
         return $usuario;
@@ -55,8 +55,8 @@ class AuthMiddleware {
         return null;
     }
 
-    private static function error($mensaje) {
-        http_response_code(401);
+    private static function error($mensaje, int $status = 401) {
+        http_response_code($status);
         echo json_encode([
             'ok' => false,
             'mensaje' => $mensaje

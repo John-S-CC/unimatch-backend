@@ -63,6 +63,6 @@ try {
 } catch (Throwable $e) {
     api_json([
         "ok" => false,
-        "mensaje" => "Error del servidor: " . $e->getMessage()
+        "mensaje" => "No fue posible procesar la solicitud."
     ], 500);
 }

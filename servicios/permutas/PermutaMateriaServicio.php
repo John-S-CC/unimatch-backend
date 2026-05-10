@@ -6,7 +6,7 @@ require_once __DIR__ . '/../validadores/ValidadorHorarios.php';
 
 class PermutaMateriaServicio {
 
-    public static function intentar($conn, $solicitud){
+    public static function intentar($conn, $solicitud, ?string $fechaSistema = null){
 
         if($solicitud['tipo_solicitud'] != 'cambio_materia'){
             return false;
@@ -18,24 +18,46 @@ class PermutaMateriaServicio {
             return false;
         }
 
+        // Cada estudiante recibe el grupo que libera el otro.
+        $grupoDestinoSolicitud = (int) $permuta['grupo_origen'];
+        $grupoDestinoPermuta = (int) $solicitud['grupo_origen'];
+
         if (
-    ValidadorHorarios::tieneConflicto($conn, $solicitud['usuario_id'], $permuta['grupo_origen'], $solicitud['grupo_origen']) ||
-    ValidadorHorarios::tieneConflicto($conn, $permuta['usuario_id'], $solicitud['grupo_origen'], $permuta['grupo_origen'])
-            ) {
-           return false;
-       }
+            ValidadorHorarios::tieneConflicto($conn, (int) $solicitud['usuario_id'], $grupoDestinoSolicitud, (int) $solicitud['grupo_origen']) ||
+            ValidadorHorarios::tieneConflicto($conn, (int) $permuta['usuario_id'], $grupoDestinoPermuta, (int) $permuta['grupo_origen'])
+        ) {
+            return false;
+        }
+
+        $solicitudAjustada = $solicitud;
+        $permutaAjustada = $permuta;
+        $solicitudAjustada['grupo_destino'] = $grupoDestinoSolicitud;
+        $permutaAjustada['grupo_destino'] = $grupoDestinoPermuta;
 
         MatriculasRepositorio::intercambiarMaterias(
             $conn,
-            $solicitud,
-            $permuta
+            $solicitudAjustada,
+            $permutaAjustada
         );
 
-        SolicitudesRepositorio::marcarPermuta(
+        SolicitudesRepositorio::actualizarDestinosPermutaMateria(
+            $conn,
+            (int) $solicitud['id_solicitud'],
+            $grupoDestinoSolicitud,
+            (int) $permuta['id_solicitud'],
+            $grupoDestinoPermuta
+        );
+
+        $marcada = SolicitudesRepositorio::marcarPermuta(
             $conn,
             $solicitud['id_solicitud'],
-            $permuta['id_solicitud']
+            $permuta['id_solicitud'],
+            $fechaSistema
         );
+
+        if (!$marcada) {
+            throw new Exception('No fue posible marcar ambas solicitudes como permuta.');
+        }
 
         return true;
     }

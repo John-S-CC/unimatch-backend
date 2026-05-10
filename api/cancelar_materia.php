@@ -6,6 +6,7 @@ api_require_method("POST");
 
 require_once __DIR__ . "/../configuracion/database.php";
 require_once __DIR__ . "/../middleware/AuthMiddleware.php";
+require_once __DIR__ . "/../servicios/CalendarioAcademico.php";
 
 $usuario = AuthMiddleware::verificar();
 $usuarioId = (int) ($usuario->id ?? 0);
@@ -21,6 +22,12 @@ if ($grupoId <= 0) {
 
 try {
     $conn = api_connect_db();
+    CalendarioAcademico::sincronizarSolicitudesVencidas($conn);
+    $validacion = CalendarioAcademico::validarOperacion($conn, 'cancelacion');
+    if (!$validacion['ok']) {
+        api_json(['ok' => false, 'mensaje' => $validacion['mensaje']], 409);
+    }
+    $fechaSistema = CalendarioAcademico::obtenerFechaSistema($conn);
     $conn->begin_transaction();
 
     $sqlExiste = "
@@ -64,32 +71,14 @@ try {
 
     $conn->commit();
 
-    $evento = null;
-    if (file_exists(__DIR__ . "/../eventos/MotorEventos.php")) {
-        require_once __DIR__ . "/../eventos/MotorEventos.php";
-        if (class_exists("MotorEventos") && method_exists("MotorEventos", "procesarEvento")) {
-            try {
-                $evento = MotorEventos::procesarEvento($conn, "cancelacion_materia", [
-                    "usuario_id" => $usuarioId,
-                    "grupo_id" => $grupoId
-                ]);
-            } catch (Throwable $eventoError) {
-                $evento = [
-                    "ok" => false,
-                    "mensaje" => $eventoError->getMessage()
-                ];
-            }
-        }
-    }
-
     api_json([
         "ok" => true,
         "mensaje" => "Matrícula cancelada correctamente.",
         "data" => [
             "grupo_id" => $grupoId,
-            "materia" => $matricula["materia"] ?? null
-        ],
-        "evento" => $evento
+            "materia" => $matricula["materia"] ?? null,
+            "fecha_sistema" => $fechaSistema
+        ]
     ]);
 } catch (Throwable $e) {
     if (isset($conn) && $conn instanceof mysqli) {
@@ -98,6 +87,6 @@ try {
 
     api_json([
         "ok" => false,
-        "mensaje" => "Error del servidor: " . $e->getMessage()
+        "mensaje" => "No fue posible procesar la solicitud."
     ], 500);
 }

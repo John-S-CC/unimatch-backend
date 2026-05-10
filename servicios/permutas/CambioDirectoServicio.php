@@ -7,7 +7,7 @@ require_once __DIR__ . '/../validadores/ValidadorHorarios.php';
 
 class CambioDirectoServicio {
 
-    public static function intentar($conn, $solicitud) {
+    public static function intentar($conn, $solicitud, ?string $fechaSistema = null) {
 
         if (!in_array($solicitud['tipo_solicitud'], ['cambio_grupo', 'cambio_materia'])) {
             return false;
@@ -40,7 +40,13 @@ class CambioDirectoServicio {
             return false;
         }
 
-        SolicitudesRepositorio::marcarAprobada($conn, $solicitud['id_solicitud']);
+        SolicitudesRepositorio::marcarAprobada(
+            $conn,
+            $solicitud['id_solicitud'],
+            'directa',
+            $fechaSistema,
+            'Solicitud resuelta directamente porque había cupo y no existía conflicto de horario.'
+        );
 
         return true;
     }

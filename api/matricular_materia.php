@@ -6,6 +6,7 @@ api_require_method("POST");
 
 require_once __DIR__ . "/../configuracion/database.php";
 require_once __DIR__ . "/../middleware/AuthMiddleware.php";
+require_once __DIR__ . "/../servicios/CalendarioAcademico.php";
 require_once __DIR__ . "/../servicios/validadores/ValidadorCupos.php";
 require_once __DIR__ . "/../servicios/validadores/ValidadorHorarios.php";
 
@@ -23,6 +24,12 @@ if ($grupoId <= 0) {
 
 try {
     $conn = api_connect_db();
+    CalendarioAcademico::sincronizarSolicitudesVencidas($conn);
+    $validacion = CalendarioAcademico::validarOperacion($conn, 'inscripcion_directa');
+    if (!$validacion['ok']) {
+        api_json(['ok' => false, 'mensaje' => $validacion['mensaje']], 409);
+    }
+    $fechaSistema = CalendarioAcademico::obtenerFechaSistema($conn);
     $conn->begin_transaction();
 
     $sqlGrupo = "
@@ -99,10 +106,10 @@ try {
 
     $sqlInsert = "
         INSERT INTO matriculas (usuario_id, grupo_id, fecha_matricula, estado)
-        VALUES (?, ?, NOW(), 'activa')
+        VALUES (?, ?, ?, 'activa')
     ";
     $stmtInsert = $conn->prepare($sqlInsert);
-    $stmtInsert->bind_param("ii", $usuarioId, $grupoId);
+    $stmtInsert->bind_param("iis", $usuarioId, $grupoId, $fechaSistema);
 
     if (!$stmtInsert->execute()) {
         throw new Exception("No se pudo registrar la matrícula.");
@@ -110,42 +117,22 @@ try {
 
     $conn->commit();
 
-    $evento = null;
-    if (file_exists(__DIR__ . "/../eventos/MotorEventos.php")) {
-        require_once __DIR__ . "/../eventos/MotorEventos.php";
-        if (class_exists("MotorEventos") && method_exists("MotorEventos", "procesarEvento")) {
-            try {
-                $evento = MotorEventos::procesarEvento($conn, "matricula_nueva", [
-                    "usuario_id" => $usuarioId,
-                    "grupo_id" => $grupoId
-                ]);
-            } catch (Throwable $eventoError) {
-                $evento = [
-                    "ok" => false,
-                    "mensaje" => $eventoError->getMessage()
-                ];
-            }
-        }
-    }
-
     api_json([
         "ok" => true,
         "mensaje" => "Matrícula realizada correctamente.",
         "data" => [
             "grupo_id" => $grupoId,
-            "materia" => $grupo["materia"] ?? null
-        ],
-        "evento" => $evento
+            "materia" => $grupo["materia"] ?? null,
+            "fecha_sistema" => $fechaSistema
+        ]
     ]);
 } catch (Throwable $e) {
-    if (isset($conn) && $conn instanceof mysqli && $conn->errno === 0) {
-        try { $conn->rollback(); } catch (Throwable $ignored) {}
-    } elseif (isset($conn) && $conn instanceof mysqli) {
+    if (isset($conn) && $conn instanceof mysqli) {
         try { $conn->rollback(); } catch (Throwable $ignored) {}
     }
 
     api_json([
         "ok" => false,
-        "mensaje" => "Error del servidor: " . $e->getMessage()
+        "mensaje" => "No fue posible procesar la solicitud."
     ], 500);
 }

@@ -81,6 +81,10 @@ class SolicitudesRepositorio {
 
     public static function buscarPermutaMateria($conn, $sol) {
 
+        // En cambio de materia, la coincidencia espejo se cruza por materias:
+        // Usuario A: materia X -> materia Y
+        // Usuario B: materia Y -> materia X
+        // El intercambio real usa los grupos que cada estudiante libera actualmente.
         $sql = "
             SELECT *
             FROM solicitudes
@@ -90,21 +94,18 @@ class SolicitudesRepositorio {
               AND usuario_id <> ?
               AND materia_origen = ?
               AND materia_destino = ?
-              AND grupo_origen = ?
-              AND grupo_destino = ?
+            ORDER BY fecha_solicitud ASC, id_solicitud ASC
             LIMIT 1
         ";
 
         $stmt = $conn->prepare($sql);
 
         $stmt->bind_param(
-            "iiiiii",
+            "iiii",
             $sol['id_solicitud'],
             $sol['usuario_id'],
             $sol['materia_destino'],
-            $sol['materia_origen'],
-            $sol['grupo_destino'],
-            $sol['grupo_origen']
+            $sol['materia_origen']
         );
 
         $stmt->execute();
@@ -112,44 +113,78 @@ class SolicitudesRepositorio {
         return $stmt->get_result()->fetch_assoc();
     }
 
-    public static function marcarPermuta($conn, $id1, $id2) {
-
+    public static function actualizarDestinosPermutaMateria($conn, int $idSolicitud1, int $grupoDestino1, int $idSolicitud2, int $grupoDestino2): bool {
         $sql = "
             UPDATE solicitudes
-            SET estado = 'permuta'
+            SET grupo_destino = CASE
+                    WHEN id_solicitud = ? THEN ?
+                    WHEN id_solicitud = ? THEN ?
+                    ELSE grupo_destino
+                END,
+                detalle_estado = 'Solicitud cruzada por materia; el grupo destino fue ajustado al grupo liberado por el otro estudiante.'
             WHERE id_solicitud IN (?, ?)
         ";
 
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param("ii", $id1, $id2);
+        $stmt->bind_param("iiiiii", $idSolicitud1, $grupoDestino1, $idSolicitud2, $grupoDestino2, $idSolicitud1, $idSolicitud2);
 
         return $stmt->execute();
     }
 
-    public static function marcarCompletada($conn, $id) {
+    public static function marcarPermuta($conn, $id1, $id2, ?string $fechaResolucion = null) {
 
+        $fecha = $fechaResolucion ?: date('Y-m-d H:i:s');
         $sql = "
             UPDATE solicitudes
-            SET estado = 'permuta'
+            SET estado = 'permuta',
+                canal_resolucion = 'permuta',
+                fecha_resolucion = ?,
+                detalle_estado = 'Solicitud atendida por permuta entre estudiantes.'
+            WHERE id_solicitud IN (?, ?)
+        ";
+
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("sii", $fecha, $id1, $id2);
+
+        if (!$stmt->execute()) {
+            return false;
+        }
+
+        return $stmt->affected_rows === 2;
+    }
+
+    public static function marcarCompletada($conn, $id, ?string $fechaResolucion = null) {
+
+        $fecha = $fechaResolucion ?: date('Y-m-d H:i:s');
+        $sql = "
+            UPDATE solicitudes
+            SET estado = 'permuta',
+                canal_resolucion = 'permuta',
+                fecha_resolucion = ?,
+                detalle_estado = 'Solicitud completada por el motor de permutas.'
             WHERE id_solicitud = ?
         ";
 
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param("i", $id);
+        $stmt->bind_param("si", $fecha, $id);
 
         return $stmt->execute();
     }
 
-    public static function marcarSolicitudComoPermuta($conn, $id) {
+    public static function marcarSolicitudComoPermuta($conn, $id, ?string $fechaResolucion = null) {
 
+        $fecha = $fechaResolucion ?: date('Y-m-d H:i:s');
         $sql = "
             UPDATE solicitudes
-            SET estado = 'permuta'
+            SET estado = 'permuta',
+                canal_resolucion = 'permuta',
+                fecha_resolucion = ?,
+                detalle_estado = 'Solicitud completada por ciclo de permutas.'
             WHERE id_solicitud = ?
         ";
 
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param("i", $id);
+        $stmt->bind_param("si", $fecha, $id);
 
         return $stmt->execute();
     }
@@ -172,15 +207,23 @@ class SolicitudesRepositorio {
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
 
-    public static function marcarAprobada($conn, $idSolicitud) {
+    public static function marcarAprobada($conn, $idSolicitud, string $canal = 'directa', ?string $fechaResolucion = null, ?string $detalle = null) {
+        $fecha = $fechaResolucion ?: date('Y-m-d H:i:s');
+        $detalleFinal = $detalle ?: ($canal === 'directa'
+            ? 'Solicitud resuelta directamente por validaciones automáticas.'
+            : 'Solicitud aprobada por el sistema.');
+
         $sql = "
             UPDATE solicitudes
-            SET estado = 'aprobada'
+            SET estado = 'aprobada',
+                canal_resolucion = ?,
+                fecha_resolucion = ?,
+                detalle_estado = ?
             WHERE id_solicitud = ?
         ";
 
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param("i", $idSolicitud);
+        $stmt->bind_param("sssi", $canal, $fecha, $detalleFinal, $idSolicitud);
 
         return $stmt->execute();
     }

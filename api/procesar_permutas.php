@@ -1,35 +1,27 @@
 <?php
-header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Headers: Content-Type, Authorization");
-header("Access-Control-Allow-Methods: POST, GET, OPTIONS");
-header("Content-Type: application/json; charset=UTF-8");
-
-if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") {
-    http_response_code(200);
-    exit;
-}
-
+require_once __DIR__ . "/_common.php";
 require_once __DIR__ . "/../configuracion/database.php";
 require_once __DIR__ . "/../middleware/AuthMiddleware.php";
 require_once __DIR__ . "/../servicios/MotorPermutas.php";
 
-AuthMiddleware::verificar();
+api_set_common_headers("POST, OPTIONS");
+api_handle_preflight();
+api_require_method("POST");
+
+$usuario = AuthMiddleware::verificar();
+if (!api_user_is_admin($usuario)) {
+    api_json(['ok' => false, 'mensaje' => 'No autorizado.'], 403);
+}
 
 try {
-    $db = new Database();
-    $conn = $db->connect();
-
+    $conn = api_connect_db();
     $resultado = MotorPermutas::procesar($conn);
 
-    echo json_encode([
+    api_json([
         'ok' => true,
         'mensaje' => 'Motor ejecutado correctamente.',
         'resultado' => $resultado
     ]);
 } catch (Throwable $e) {
-    http_response_code(500);
-    echo json_encode([
-        'ok' => false,
-        'mensaje' => 'Error del servidor: ' . $e->getMessage()
-    ]);
+    api_error($e, 'No fue posible ejecutar el motor de permutas.');
 }

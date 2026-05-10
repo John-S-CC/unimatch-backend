@@ -2,11 +2,16 @@
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 
+require_once __DIR__ . "/env.php";
 require_once __DIR__ . "/../vendor/autoload.php";
 
 class JWTConfig {
     private static function getSecretKey() {
-        return getenv('UNIMATCH_JWT_SECRET') ?: 'uN1mAtCh_2026_S3cr3t_K3y_Muy_Larga_Y_Segura_Para_JWT';
+        $secret = getenv('UNIMATCH_JWT_SECRET') ?: getenv('JWT_SECRET');
+        if (!$secret || strlen($secret) < 32 || str_contains($secret, 'cambia_esta_clave')) {
+            throw new Exception('JWT_SECRET no configurado o demasiado corto.');
+        }
+        return $secret;
     }
 
     private static $algorithm = 'HS256';
