@@ -6,7 +6,7 @@ require_once __DIR__ . '/../validadores/ValidadorHorarios.php';
 
 class PermutaGrupoServicio {
 
-    public static function intentar($conn, $solicitud){
+    public static function intentar($conn, $solicitud, ?string $fechaSistema = null){
 
         if($solicitud['tipo_solicitud'] != 'cambio_grupo'){
             return false;
@@ -19,11 +19,11 @@ class PermutaGrupoServicio {
         }
 
         if (
-    ValidadorHorarios::tieneConflicto($conn, $solicitud['usuario_id'], $permuta['grupo_origen'], $solicitud['grupo_origen']) ||
-    ValidadorHorarios::tieneConflicto($conn, $permuta['usuario_id'], $solicitud['grupo_origen'], $permuta['grupo_origen'])
-     ) {
-    return false;
-      }
+            ValidadorHorarios::tieneConflicto($conn, $solicitud['usuario_id'], $permuta['grupo_origen'], $solicitud['grupo_origen']) ||
+            ValidadorHorarios::tieneConflicto($conn, $permuta['usuario_id'], $solicitud['grupo_origen'], $permuta['grupo_origen'])
+        ) {
+            return false;
+        }
 
         MatriculasRepositorio::intercambiarGrupos(
             $conn,
@@ -31,11 +31,16 @@ class PermutaGrupoServicio {
             $permuta
         );
 
-        SolicitudesRepositorio::marcarPermuta(
+        $marcada = SolicitudesRepositorio::marcarPermuta(
             $conn,
             $solicitud['id_solicitud'],
-            $permuta['id_solicitud']
+            $permuta['id_solicitud'],
+            $fechaSistema
         );
+
+        if (!$marcada) {
+            throw new Exception('No fue posible marcar ambas solicitudes como permuta.');
+        }
 
         return true;
     }

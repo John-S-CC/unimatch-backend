@@ -52,9 +52,9 @@ try {
                 ma.nombre, ' - Grupo ', g.id_grupo, ' - ',
                 COALESCE(GROUP_CONCAT(DISTINCT CONCAT(h.dia, ' ', TIME_FORMAT(h.hora_inicio, '%H:%i'), '-', TIME_FORMAT(h.hora_fin, '%H:%i')) ORDER BY h.dia, h.hora_inicio SEPARATOR ' / '), 'Sin horario'),
                 ' - Cupos: ',
-                (g.cupos - COUNT(DISTINCT mt.id_matricula))
+                GREATEST(g.cupos - COUNT(DISTINCT mt.id_matricula), 0)
             ) AS etiqueta,
-            (g.cupos - COUNT(DISTINCT mt.id_matricula)) AS cupos_disponibles
+            GREATEST(g.cupos - COUNT(DISTINCT mt.id_matricula), 0) AS cupos_disponibles
         FROM grupos g
         INNER JOIN materias ma ON ma.id_materia = g.id_materia
         LEFT JOIN horarios h ON h.id_grupo = g.id_grupo
@@ -69,7 +69,6 @@ try {
               AND mu.estado = 'activa'
         )
         GROUP BY ma.id_materia, ma.nombre, g.id_grupo, g.cupos
-        HAVING cupos_disponibles > 0
         ORDER BY ma.nombre, g.id_grupo
     ";
 
@@ -95,6 +94,6 @@ try {
 } catch (Throwable $e) {
     api_json([
         "ok" => false,
-        "mensaje" => "Error del servidor: " . $e->getMessage()
+        "mensaje" => "No fue posible procesar la solicitud."
     ], 500);
 }

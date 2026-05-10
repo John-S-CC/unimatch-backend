@@ -5,7 +5,7 @@ require_once __DIR__ . '/../repositorios/MatriculasRepositorio.php';
 
 class CicloPermutasServicio {
 
-    public static function intentar($conn, $solicitud){
+    public static function intentar($conn, $solicitud, ?string $fechaSistema = null){
 
         if($solicitud['tipo_solicitud'] !== 'cambio_materia'){
             return false;
@@ -35,7 +35,8 @@ class CicloPermutasServicio {
         foreach($ciclo as $sol){
             SolicitudesRepositorio::marcarSolicitudComoPermuta(
                 $conn,
-                $sol['id_solicitud']
+                $sol['id_solicitud'],
+                $fechaSistema
             );
         }
 
