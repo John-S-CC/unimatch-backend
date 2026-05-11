@@ -1,19 +1,14 @@
 <?php
-// 1. Permitir el origen de tu frontend (copia la URL exacta de tu frontend de Render)
-header("Access-Control-Allow-Origin: https://onrender.com");
-
-// 2. Permitir los métodos que usas
-header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
-
-// 3. Permitir los encabezados que envía el navegador (como Content-Type)
+header("Access-Control-Allow-Origin: https://unimatch-frontend.onrender.com");
 header("Access-Control-Allow-Headers: Content-Type, Authorization");
+header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+header("Access-Control-Allow-Credentials: true");
 
-// 4. Manejar la petición "preflight" de los navegadores
-if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
+// responder al preflight OPTIONS
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
-    exit;
+    exit();
 }
-
 error_reporting(0);
 ini_set('display_errors', 0);
 
