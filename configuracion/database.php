@@ -1,4 +1,16 @@
 <?php
+
+// Permitir que tu URL de frontend acceda al backend
+header("Access-Control-Allow-Origin: https://onrender.com");
+header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type");
+
+// Si es una petición OPTIONS (pre-flight), terminar aquí
+if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
+    exit;
+}
+?>
+
 if (file_exists(__DIR__ . "/env.php")) {
     require_once __DIR__ . "/env.php";
 }
