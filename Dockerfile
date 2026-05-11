@@ -4,7 +4,7 @@ RUN docker-php-ext-install mysqli pdo pdo_mysql
 
 RUN a2enmod rewrite headers
 
-COPY ./unimatch-backend/ /var/www/html/
+COPY ./api/ /var/www/html/
 
 RUN chown -R www-data:www-data /var/www/html
 
