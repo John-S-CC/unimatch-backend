@@ -9,6 +9,7 @@ if (!function_exists("api_set_common_headers")) {
 
         if ($origin && in_array($origin, $allowed, true)) {
             header("Access-Control-Allow-Origin: {$origin}");
+            header("Access-Control-Allow-Credentials: true");
             header("Vary: Origin");
         } elseif (!SecurityConfig::isProduction()) {
             header("Access-Control-Allow-Origin: *");
