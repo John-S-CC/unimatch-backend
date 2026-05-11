@@ -1,5 +1,9 @@
 <?php
-require_once __DIR__ . "/env.php";
+if (file_exists(__DIR__ . "/env.php")) {
+    require_once __DIR__ . "/env.php";
+}
+// Si no existe, no pasa nada, porque Render usará las variables de entorno reales.
+
 
 class Database {
 
