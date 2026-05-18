@@ -5,12 +5,12 @@ if (!function_exists("api_set_common_headers")) {
 
     function api_set_common_headers(string $methods = "GET, OPTIONS"): void {
         header_remove("Access-Control-Allow-Origin");
-    header_remove("Access-Control-Allow-Headers");
-    header_remove("Access-Control-Allow-Methods");
-    header_remove("Vary");
+        header_remove("Access-Control-Allow-Headers");
+        header_remove("Access-Control-Allow-Methods");
+        header_remove("Access-Control-Allow-Credentials");
+        header_remove("Vary");
 
-    $origin = $_SERVER["HTTP_ORIGIN"] ?? "";
-    
+        $origin = $_SERVER["HTTP_ORIGIN"] ?? "";
         $allowedRaw = getenv("UNIMATCH_FRONTEND_ORIGINS") ?: "https://unimatch-frontend.onrender.com";
         $allowed = array_filter(array_map("trim", explode(",", $allowedRaw)));
 
