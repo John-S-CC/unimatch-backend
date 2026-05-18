@@ -3,31 +3,40 @@ require_once __DIR__ . "/../configuracion/security.php";
 
 if (!function_exists("api_set_common_headers")) {    
 
-    function api_set_common_headers(string $methods = "GET, OPTIONS"): void {
-        header_remove("Access-Control-Allow-Origin");
-        header_remove("Access-Control-Allow-Headers");
-        header_remove("Access-Control-Allow-Methods");
-        header_remove("Access-Control-Allow-Credentials");
-        header_remove("Vary");
+    function api_set_common_headers(string $methods = "GET, POST, OPTIONS"): void {
 
-        $origin = $_SERVER["HTTP_ORIGIN"] ?? "";
-        $allowedRaw = getenv("UNIMATCH_FRONTEND_ORIGINS") ?: "https://unimatch-frontend.onrender.com";
-        $allowed = array_filter(array_map("trim", explode(",", $allowedRaw)));
+    header_remove("Access-Control-Allow-Origin");
+    header_remove("Access-Control-Allow-Headers");
+    header_remove("Access-Control-Allow-Methods");
+    header_remove("Access-Control-Allow-Credentials");
+    header_remove("Vary");
 
-        if ($origin && in_array($origin, $allowed, true)) {
-            header("Access-Control-Allow-Origin: {$origin}");
-            header("Vary: Origin");
-        } elseif (!SecurityConfig::isProduction()) {
-            header("Access-Control-Allow-Origin: *");
-        }
+    $origin = $_SERVER["HTTP_ORIGIN"] ?? "";
 
-        header("Access-Control-Allow-Headers: Content-Type, Authorization");
-        header("Access-Control-Allow-Methods: {$methods}");
-        header("Content-Type: application/json; charset=UTF-8");
-        header("X-Content-Type-Options: nosniff");
-        header("X-Frame-Options: DENY");
-        header("Referrer-Policy: no-referrer");
+    $allowedRaw = getenv("UNIMATCH_FRONTEND_ORIGINS")
+        ?: "https://unimatch-frontend.onrender.com";
+
+    $allowed = array_filter(array_map("trim", explode(",", $allowedRaw)));
+
+    if ($origin && in_array($origin, $allowed, true)) {
+
+        header("Access-Control-Allow-Origin: $origin");
+        header("Access-Control-Allow-Credentials: true");
+        header("Vary: Origin");
+
+    } elseif (!SecurityConfig::isProduction()) {
+
+        header("Access-Control-Allow-Origin: *");
     }
+
+    header("Access-Control-Allow-Headers: Content-Type, Authorization");
+    header("Access-Control-Allow-Methods: $methods");
+    header("Content-Type: application/json; charset=UTF-8");
+
+    header("X-Content-Type-Options: nosniff");
+    header("X-Frame-Options: DENY");
+    header("Referrer-Policy: no-referrer");
+}
 
     function api_handle_preflight(): void {
         if (( $_SERVER["REQUEST_METHOD"] ?? "GET") === "OPTIONS") {
