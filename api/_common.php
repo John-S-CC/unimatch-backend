@@ -4,12 +4,11 @@ require_once __DIR__ . "/../configuracion/security.php";
 if (!function_exists("api_set_common_headers")) {
     function api_set_common_headers(string $methods = "GET, OPTIONS"): void {
         $origin = $_SERVER["HTTP_ORIGIN"] ?? "";
-        $allowedRaw = getenv("UNIMATCH_FRONTEND_ORIGINS") ?: "http://localhost:5500,http://127.0.0.1:5500";
+        $allowedRaw = getenv("UNIMATCH_FRONTEND_ORIGINS") ?: "https://unimatch-frontend.onrender.com";
         $allowed = array_filter(array_map("trim", explode(",", $allowedRaw)));
 
         if ($origin && in_array($origin, $allowed, true)) {
             header("Access-Control-Allow-Origin: {$origin}");
-            header("Access-Control-Allow-Credentials: true");
             header("Vary: Origin");
         } elseif (!SecurityConfig::isProduction()) {
             header("Access-Control-Allow-Origin: *");
