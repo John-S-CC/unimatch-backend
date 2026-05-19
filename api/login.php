@@ -71,7 +71,7 @@ try {
     }
 
     $conn = api_connect_db();
-    $stmt = $conn->prepare("SELECT id_usuario, nombre, correo, password, rol, programa, extension, extencion FROM usuarios WHERE correo = ? LIMIT 1");
+    $stmt = $conn->prepare("SELECT id_usuario, nombre, correo, password, rol, programa, extension FROM usuarios WHERE correo = ? LIMIT 1");
     $stmt->bind_param("s", $correo);
     $stmt->execute();
     $result = $stmt->get_result();
