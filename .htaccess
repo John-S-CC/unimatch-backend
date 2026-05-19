@@ -1,17 +1,3 @@
 RewriteEngine On
 RewriteCond %{HTTP:Authorization} ^(.+)$
 RewriteRule .* - [E=HTTP_AUTHORIZATION:%1]
-
-<IfModule mod_headers.c>
-
-    Header always unset Access-Control-Allow-Origin
-    Header always unset Access-Control-Allow-Headers
-    Header always unset Access-Control-Allow-Methods
-    Header always unset Vary
-
-    Header always set Access-Control-Allow-Origin "https://unimatch-frontend.onrender.com"
-    Header always set Access-Control-Allow-Headers "Content-Type, Authorization"
-    Header always set Access-Control-Allow-Methods "GET, POST, OPTIONS"
-    Header always set Vary "Origin"
-
-</IfModule>
