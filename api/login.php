@@ -3,13 +3,10 @@
 error_reporting(0);
 ini_set('display_errors', 0);
  require_once __DIR__ . "/_common.php";
-// require_once __DIR__ . "/../configuracion/database.php";
- require_once __DIR__ . "/../configuracion/jwt.php";
+ require_once __DIR__ . "/../configuracion/database.php";
+ //require_once __DIR__ . "/../configuracion/jwt.php";
 
-echo json_encode([
-    "ok" => true,
-    "mensaje" => "LOGIN LIMPIO"
-]);
+
 
 api_set_common_headers("POST, OPTIONS");
 api_handle_preflight();
