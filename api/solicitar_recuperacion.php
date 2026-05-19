@@ -56,7 +56,7 @@ try {
 
     $conn->commit();
 
-    $frontUrl = rtrim((string) (getenv("UNIMATCH_FRONTEND_PUBLIC_URL") ?: "http://localhost:5500"), "/");
+    $frontUrl = rtrim((string) (getenv("UNIMATCH_FRONTEND_PUBLIC_URL") ?: "https://unimatch-frontend.onrender.com"), "/");
     $resetLink = $frontUrl . "/recuperar_password.html?token=" . urlencode($token);
 
     $nombre = htmlspecialchars((string) ($user["nombre"] ?? "Usuario"), ENT_QUOTES, "UTF-8");
