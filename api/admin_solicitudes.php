@@ -15,7 +15,7 @@ if (!api_user_is_admin($usuario)) {
 
 try {
     $conn = api_connect_db();
-    CalendarioAcademico::sincronizarSolicitudesVencidas($conn);
+  //  CalendarioAcademico::sincronizarSolicitudesVencidas($conn);
 
     $sql = "
         SELECT
