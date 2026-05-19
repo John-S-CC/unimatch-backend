@@ -35,26 +35,45 @@ class AuthMiddleware {
     }
 
     private static function obtenerAuthorizationHeader() {
-        if (function_exists('getallheaders')) {
-            $headers = getallheaders();
-            foreach ($headers as $key => $value) {
-                if (strcasecmp($key, 'Authorization') === 0) {
-                    return $value;
-                }
-            }
-        }
 
-        if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
-            return $_SERVER['HTTP_AUTHORIZATION'];
-        }
-
-        if (isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
-            return $_SERVER['REDIRECT_HTTP_AUTHORIZATION'];
-        }
-
-        return null;
+    if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
+        return trim($_SERVER['HTTP_AUTHORIZATION']);
     }
 
+    if (isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
+        return trim($_SERVER['REDIRECT_HTTP_AUTHORIZATION']);
+    }
+
+    if (isset($_SERVER['Authorization'])) {
+        return trim($_SERVER['Authorization']);
+    }
+
+    if (function_exists('apache_request_headers')) {
+
+        $headers = apache_request_headers();
+
+        foreach ($headers as $key => $value) {
+
+            if (strtolower($key) === 'authorization') {
+                return trim($value);
+            }
+        }
+    }
+
+    if (function_exists('getallheaders')) {
+
+        $headers = getallheaders();
+
+        foreach ($headers as $key => $value) {
+
+            if (strtolower($key) === 'authorization') {
+                return trim($value);
+            }
+        }
+    }
+
+    return null;
+}
     private static function error($mensaje, int $status = 401) {
         http_response_code($status);
         echo json_encode([
