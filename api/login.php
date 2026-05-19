@@ -116,5 +116,15 @@ try {
         ]
     ]);
 } catch (Throwable $e) {
-    api_error($e, "No fue posible iniciar sesión.");
+
+    http_response_code(500);
+
+    echo json_encode([
+        "ok" => false,
+        "mensaje_real" => $e->getMessage(),
+        "archivo" => $e->getFile(),
+        "linea" => $e->getLine()
+    ]);
+
+    exit;
 }
