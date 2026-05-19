@@ -19,7 +19,7 @@ try {
             correo,
             rol,
             COALESCE(programa, '') AS programa,
-            COALESCE(extension, COALESCE(extencion, 'Extensión Facatativá')) AS extension,
+            COALESCE(extension, COALESCE(extension, 'Extensión Facatativá')) AS extension,
             DATE_FORMAT(NOW(), '%Y-%m-%d') AS fecha_actual
         FROM usuarios
         WHERE id_usuario = ?
