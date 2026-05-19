@@ -38,12 +38,20 @@ if (!function_exists("api_set_common_headers")) {
     header("Referrer-Policy: no-referrer");
 }
 
-    function api_handle_preflight(): void {
-        if (( $_SERVER["REQUEST_METHOD"] ?? "GET") === "OPTIONS") {
-            http_response_code(200);
-            exit;
-        }
+  function api_handle_preflight(): void {
+
+    if (($_SERVER["REQUEST_METHOD"] ?? "") === "OPTIONS") {
+
+        header("Access-Control-Allow-Origin: https://unimatch-frontend.onrender.com");
+        header("Access-Control-Allow-Headers: Content-Type, Authorization");
+        header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+        header("Access-Control-Allow-Credentials: true");
+        header("Content-Length: 0");
+
+        http_response_code(204);
+        exit;
     }
+}
 
     function api_require_method(string $method): void {
         if (strtoupper($_SERVER["REQUEST_METHOD"] ?? "GET") !== strtoupper($method)) {
