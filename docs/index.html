@@ -1,29 +1,97 @@
 <!doctype html>
-<html lang="en">
-  <head>
+<html lang="es">
+
+<head>
+
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1"
+    />
+
     <title>UniMatch API Docs</title>
-    <!-- Swagger UI from CDN -->
-    <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@4/swagger-ui.css" />
-  </head>
-  <body>
+
+    <!-- Seguridad -->
+    <meta
+        http-equiv="X-Content-Type-Options"
+        content="nosniff"
+    />
+
+    <meta
+        http-equiv="Referrer-Policy"
+        content="no-referrer"
+    />
+
+    <!-- Swagger UI -->
+    <link
+        rel="stylesheet"
+        href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css"
+        integrity="sha384-X"
+        crossorigin="anonymous"
+    />
+
+    <style>
+        html {
+            box-sizing: border-box;
+            overflow-y: scroll;
+        }
+
+        *,
+        *:before,
+        *:after {
+            box-sizing: inherit;
+        }
+
+        body {
+            margin: 0;
+            background: #fafafa;
+        }
+    </style>
+
+</head>
+
+<body>
+
     <div id="swagger-ui"></div>
-    <script src="https://unpkg.com/swagger-ui-dist@4/swagger-ui-bundle.js"></script>
-    <script>
-      window.onload = function() {
-        const ui = SwaggerUIBundle({
-          url: "../openapi.json",
-          dom_id: '#swagger-ui',
-          deepLinking: true,
-          presets: [
-            SwaggerUIBundle.presets.apis,
-            SwaggerUIBundle.SwaggerUIStandalonePreset
-          ],
-          layout: "BaseLayout"
-        })
-        window.ui = ui
-      }
+
+    <script
+        src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"
+        crossorigin="anonymous">
     </script>
-  </body>
+
+    <script>
+
+        window.onload = () => {
+
+            window.ui = SwaggerUIBundle({
+
+                url: "../openapi.json",
+
+                dom_id: "#swagger-ui",
+
+                deepLinking: true,
+
+                presets: [
+                    SwaggerUIBundle.presets.apis
+                ],
+
+                layout: "BaseLayout",
+
+                docExpansion: "none",
+
+                defaultModelsExpandDepth: -1,
+
+                displayRequestDuration: true,
+
+                filter: true,
+
+                tryItOutEnabled: false
+            });
+        };
+
+    </script>
+
+</body>
+
 </html>
