@@ -1,4 +1,34 @@
 <?php
+/**
+ * @OA\Post(
+ *     path="/api/reset_password.php",
+ *     summary="Restablecer contraseña",
+ *     description="Permite restablecer la contraseña de un usuario mediante token de recuperación",
+ *     tags={"Autenticación"},
+ *     @OA\RequestBody(
+ *         required=true,
+ *         description="Datos para restablecer contraseña",
+ *         @OA\JsonContent(
+ *             type="object",
+ *             required={"token", "nueva_password"},
+ *             properties={
+ *                 @OA\Property(property="token", type="string", example="abc123def456"),
+ *                 @OA\Property(property="nueva_password", type="string", format="password", example="nuevaContraseña123")
+ *             }
+ *         )
+ *     ),
+ *     @OA\Response(
+ *         response=200,
+ *         description="Contraseña restablecida",
+ *         @OA\JsonContent(ref="#/components/schemas/SuccessResponse")
+ *     ),
+ *     @OA\Response(
+ *         response=400,
+ *         description="Token inválido o expirado",
+ *         @OA\JsonContent(ref="#/components/schemas/ErrorResponse")
+ *     )
+ * )
+ */
 error_reporting(0);
 ini_set('display_errors', 0);
 

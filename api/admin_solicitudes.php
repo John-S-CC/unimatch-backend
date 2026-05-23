@@ -1,4 +1,30 @@
 <?php
+/**
+ * @OA\Get(
+ *     path="/api/admin_solicitudes.php",
+ *     summary="Listar todas las solicitudes (Admin)",
+ *     description="Obtiene todas las solicitudes del sistema con filtros (Solo Admin)",
+ *     tags={"Administrador"},
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(
+ *         name="estado",
+ *         in="query",
+ *         description="Filtro por estado",
+ *         @OA\Schema(type="string", enum={"pendiente", "aprobada", "rechazada"})
+ *     ),
+ *     @OA\Response(
+ *         response=200,
+ *         description="Lista de solicitudes",
+ *         @OA\JsonContent(
+ *             type="object",
+ *             properties={
+ *                 @OA\Property(property="ok", type="boolean", example=true),
+ *                 @OA\Property(property="solicitudes", type="array", items={"$ref"="#/components/schemas/Solicitud"})
+ *             }
+ *         )
+ *     )
+ * )
+ */
 require_once __DIR__ . "/_common.php";
 api_set_common_headers("GET, OPTIONS");
 api_handle_preflight();

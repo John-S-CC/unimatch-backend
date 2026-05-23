@@ -1,4 +1,29 @@
 <?php
+/**
+ * @OA\Get(
+ *     path="/api/perfil_usuario.php",
+ *     summary="Obtener perfil del usuario",
+ *     description="Retorna la información completa del perfil del usuario autenticado",
+ *     tags={"Usuarios"},
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Response(
+ *         response=200,
+ *         description="Datos del perfil del usuario",
+ *         @OA\JsonContent(
+ *             type="object",
+ *             properties={
+ *                 @OA\Property(property="ok", type="boolean", example=true),
+ *                 @OA\Property(property="usuario", ref="#/components/schemas/Usuario")
+ *             }
+ *         )
+ *     ),
+ *     @OA\Response(
+ *         response=401,
+ *         description="No autorizado",
+ *         @OA\JsonContent(ref="#/components/schemas/ErrorResponse")
+ *     )
+ * )
+ */
 require_once __DIR__ . "/_common.php";
 api_set_common_headers("GET, OPTIONS");
 api_handle_preflight();

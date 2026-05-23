@@ -1,4 +1,34 @@
 <?php
+/**
+ * @OA\Post(
+ *     path="/api/crear_turno.php",
+ *     summary="Crear nuevo turno (Admin)",
+ *     description="Permite a un administrador crear un nuevo turno para una materia",
+ *     tags={"Turnos"},
+ *     security={{"bearerAuth":{}}},
+ *     @OA\RequestBody(
+ *         required=true,
+ *         description="Datos del nuevo turno",
+ *         @OA\JsonContent(
+ *             type="object",
+ *             required={"id_materia", "dia", "hora_inicio", "hora_fin", "salon"},
+ *             properties={
+ *                 @OA\Property(property="id_materia", type="integer", example=1),
+ *                 @OA\Property(property="dia", type="string", example="Lunes"),
+ *                 @OA\Property(property="hora_inicio", type="string", format="time", example="08:00:00"),
+ *                 @OA\Property(property="hora_fin", type="string", format="time", example="10:00:00"),
+ *                 @OA\Property(property="salon", type="string", example="A101"),
+ *                 @OA\Property(property="docente", type="string", example="Dr. Carlos López")
+ *             }
+ *         )
+ *     ),
+ *     @OA\Response(
+ *         response=201,
+ *         description="Turno creado",
+ *         @OA\JsonContent(ref="#/components/schemas/SuccessResponse")
+ *     )
+ * )
+ */
 require_once __DIR__ . "/_common.php";
 api_set_common_headers("POST, OPTIONS");
 api_handle_preflight();

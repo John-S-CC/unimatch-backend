@@ -1,5 +1,45 @@
 <?php
-
+/**
+ * @OA\Post(
+ *     path="/api/login.php",
+ *     summary="Autenticar usuario",
+ *     description="Autentica un usuario con correo y contraseña, retorna token JWT",
+ *     tags={"Autenticación"},
+ *     @OA\RequestBody(
+ *         required=true,
+ *         description="Credenciales del usuario",
+ *         @OA\JsonContent(
+ *             type="object",
+ *             required={"correo", "password"},
+ *             properties={
+ *                 @OA\Property(property="correo", type="string", format="email", example="usuario@unimatch.edu.co"),
+ *                 @OA\Property(property="password", type="string", format="password", example="contraseña123")
+ *             }
+ *         )
+ *     ),
+ *     @OA\Response(
+ *         response=200,
+ *         description="Login exitoso",
+ *         @OA\JsonContent(
+ *             type="object",
+ *             properties={
+ *                 @OA\Property(property="ok", type="boolean", example=true),
+ *                 @OA\Property(property="token", type="string", example="eyJhbGc..."),
+ *                 @OA\Property(property="usuario", ref="#/components/schemas/Usuario")
+ *             }
+ *         )
+ *     ),
+ *     @OA\Response(
+ *         response=401,
+ *         description="Credenciales inválidas",
+ *         @OA\JsonContent(ref="#/components/schemas/ErrorResponse")
+ *     ),
+ *     @OA\Response(
+ *         response=429,
+ *         description="Demasiados intentos de login"
+ *     )
+ * )
+ */
 error_reporting(0);
 ini_set('display_errors', 0);
  require_once __DIR__ . "/_common.php";

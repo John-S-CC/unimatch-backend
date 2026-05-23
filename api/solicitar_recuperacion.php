@@ -1,4 +1,33 @@
 <?php
+/**
+ * @OA\Post(
+ *     path="/api/solicitar_recuperacion.php",
+ *     summary="Solicitar recuperación de contraseña",
+ *     description="Envía un correo con enlace de recuperación de contraseña al usuario",
+ *     tags={"Autenticación"},
+ *     @OA\RequestBody(
+ *         required=true,
+ *         description="Correo del usuario",
+ *         @OA\JsonContent(
+ *             type="object",
+ *             required={"correo"},
+ *             properties={
+ *                 @OA\Property(property="correo", type="string", format="email", example="usuario@unimatch.edu.co")
+ *             }
+ *         )
+ *     ),
+ *     @OA\Response(
+ *         response=200,
+ *         description="Correo de recuperación enviado",
+ *         @OA\JsonContent(ref="#/components/schemas/SuccessResponse")
+ *     ),
+ *     @OA\Response(
+ *         response=404,
+ *         description="Usuario no encontrado",
+ *         @OA\JsonContent(ref="#/components/schemas/ErrorResponse")
+ *     )
+ * )
+ */
 error_reporting(0);
 ini_set('display_errors', 0);
 

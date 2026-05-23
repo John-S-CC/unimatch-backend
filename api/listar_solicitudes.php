@@ -1,4 +1,29 @@
 <?php
+/**
+ * @OA\Get(
+ *     path="/api/listar_solicitudes.php",
+ *     summary="Listar solicitudes del usuario",
+ *     description="Obtiene todas las solicitudes creadas por el usuario autenticado",
+ *     tags={"Solicitudes"},
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Response(
+ *         response=200,
+ *         description="Lista de solicitudes",
+ *         @OA\JsonContent(
+ *             type="object",
+ *             properties={
+ *                 @OA\Property(property="ok", type="boolean", example=true),
+ *                 @OA\Property(property="solicitudes", type="array", items={"$ref"="#/components/schemas/Solicitud"})
+ *             }
+ *         )
+ *     ),
+ *     @OA\Response(
+ *         response=401,
+ *         description="No autorizado",
+ *         @OA\JsonContent(ref="#/components/schemas/ErrorResponse")
+ *     )
+ * )
+ */
 require_once __DIR__ . "/_common.php";
 api_set_common_headers("GET, OPTIONS");
 api_handle_preflight();

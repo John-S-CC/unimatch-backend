@@ -1,4 +1,31 @@
 <?php
+/**
+ * @OA\Get(
+ *     path="/api/admin_resumen.php",
+ *     summary="Resumen administrativo",
+ *     description="Obtiene un resumen de las solicitudes y cambios pendientes (Solo Admin)",
+ *     tags={"Administrador"},
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Response(
+ *         response=200,
+ *         description="Resumen administrativo",
+ *         @OA\JsonContent(
+ *             type="object",
+ *             properties={
+ *                 @OA\Property(property="ok", type="boolean", example=true),
+ *                 @OA\Property(property="solicitudes_pendientes", type="integer", example=15),
+ *                 @OA\Property(property="usuarios_activos", type="integer", example=487),
+ *                 @OA\Property(property="materias_total", type="integer", example=52)
+ *             }
+ *         )
+ *     ),
+ *     @OA\Response(
+ *         response=403,
+ *         description="Acceso denegado - No es administrador",
+ *         @OA\JsonContent(ref="#/components/schemas/ErrorResponse")
+ *     )
+ * )
+ */
 require_once __DIR__ . "/_common.php";
 api_set_common_headers("GET, OPTIONS");
 api_handle_preflight();

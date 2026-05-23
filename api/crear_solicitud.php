@@ -1,4 +1,45 @@
 <?php
+/**
+ * @OA\Post(
+ *     path="/api/crear_solicitud.php",
+ *     summary="Crear una solicitud de cambio académico",
+ *     description="Permite crear solicitudes de cancelación, cambio de grupo, cambio de materia o nueva inscripción",
+ *     tags={"Solicitudes"},
+ *     security={{"bearerAuth":{}}},
+ *     @OA\RequestBody(
+ *         required=true,
+ *         description="Datos de la solicitud",
+ *         @OA\JsonContent(
+ *             type="object",
+ *             required={"tipo_solicitud"},
+ *             properties={
+ *                 @OA\Property(property="tipo_solicitud", type="string", enum={"cancelacion", "cambio_grupo", "cambio_materia", "nueva_inscripcion"}, example="cambio_grupo"),
+ *                 @OA\Property(property="grupo_origen", type="integer", example=1),
+ *                 @OA\Property(property="grupo_destino", type="integer", example=2),
+ *                 @OA\Property(property="materia_origen", type="integer", example=5),
+ *                 @OA\Property(property="materia_destino", type="integer", example=6)
+ *             }
+ *         )
+ *     ),
+ *     @OA\Response(
+ *         response=200,
+ *         description="Solicitud creada exitosamente",
+ *         @OA\JsonContent(
+ *             type="object",
+ *             properties={
+ *                 @OA\Property(property="ok", type="boolean", example=true),
+ *                 @OA\Property(property="mensaje", type="string", example="Solicitud registrada"),
+ *                 @OA\Property(property="id_solicitud", type="integer", example=42)
+ *             }
+ *         )
+ *     ),
+ *     @OA\Response(
+ *         response=422,
+ *         description="Datos inválidos o conflicto académico",
+ *         @OA\JsonContent(ref="#/components/schemas/ErrorResponse")
+ *     )
+ * )
+ */
 require_once __DIR__ . "/_common.php";
 api_set_common_headers("POST, OPTIONS");
 api_handle_preflight();

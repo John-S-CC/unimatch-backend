@@ -1,4 +1,30 @@
 <?php
+/**
+ * @OA\Get(
+ *     path="/api/mis_materias.php",
+ *     summary="Obtener mis materias matriculadas",
+ *     description="Obtiene la lista de materias en las que el usuario está actualmente matriculado",
+ *     tags={"Matrículas"},
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Response(
+ *         response=200,
+ *         description="Lista de materias del usuario",
+ *         @OA\JsonContent(
+ *             type="object",
+ *             properties={
+ *                 @OA\Property(property="ok", type="boolean", example=true),
+ *                 @OA\Property(property="materias", type="array", items={"$ref"="#/components/schemas/Materia"}),
+ *                 @OA\Property(property="total_creditos", type="integer", example=16)
+ *             }
+ *         )
+ *     ),
+ *     @OA\Response(
+ *         response=401,
+ *         description="No autorizado",
+ *         @OA\JsonContent(ref="#/components/schemas/ErrorResponse")
+ *     )
+ * )
+ */
 require_once __DIR__ . "/_common.php";
 api_set_common_headers("GET, OPTIONS");
 api_handle_preflight();

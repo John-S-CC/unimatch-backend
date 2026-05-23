@@ -1,4 +1,29 @@
 <?php
+/**
+ * @OA\Get(
+ *     path="/api/listar_turnos.php",
+ *     summary="Listar todos los turnos",
+ *     description="Obtiene el listado completo de turnos disponibles con información de horarios y salones",
+ *     tags={"Turnos"},
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Response(
+ *         response=200,
+ *         description="Lista de turnos obtenida correctamente",
+ *         @OA\JsonContent(
+ *             type="object",
+ *             properties={
+ *                 @OA\Property(property="ok", type="boolean", example=true),
+ *                 @OA\Property(property="turnos", type="array", items={"$ref"="#/components/schemas/Turno"})
+ *             }
+ *         )
+ *     ),
+ *     @OA\Response(
+ *         response=401,
+ *         description="No autorizado",
+ *         @OA\JsonContent(ref="#/components/schemas/ErrorResponse")
+ *     )
+ * )
+ */
 require_once __DIR__ . "/_common.php";
 api_set_common_headers("GET, OPTIONS");
 api_handle_preflight();

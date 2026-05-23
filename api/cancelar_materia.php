@@ -1,4 +1,40 @@
 <?php
+/**
+ * @OA\Post(
+ *     path="/api/cancelar_materia.php",
+ *     summary="Cancelar matrícula de una materia",
+ *     description="Permite a un estudiante cancelar su matrícula en una materia específica",
+ *     tags={"Matrículas"},
+ *     security={{"bearerAuth":{}}},
+ *     @OA\RequestBody(
+ *         required=true,
+ *         description="ID de la matrícula a cancelar",
+ *         @OA\JsonContent(
+ *             type="object",
+ *             required={"id_matricula"},
+ *             properties={
+ *                 @OA\Property(property="id_matricula", type="integer", example=123)
+ *             }
+ *         )
+ *     ),
+ *     @OA\Response(
+ *         response=200,
+ *         description="Matrícula cancelada",
+ *         @OA\JsonContent(
+ *             type="object",
+ *             properties={
+ *                 @OA\Property(property="ok", type="boolean", example=true),
+ *                 @OA\Property(property="mensaje", type="string", example="Matrícula cancelada")
+ *             }
+ *         )
+ *     ),
+ *     @OA\Response(
+ *         response=422,
+ *         description="Cancelación no permitida",
+ *         @OA\JsonContent(ref="#/components/schemas/ErrorResponse")
+ *     )
+ * )
+ */
 require_once __DIR__ . "/_common.php";
 
 api_set_common_headers("POST, OPTIONS");

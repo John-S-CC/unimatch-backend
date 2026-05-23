@@ -1,4 +1,31 @@
 <?php
+/**
+ * @OA\Post(
+ *     path="/api/admin_configuracion_academica.php",
+ *     summary="Configurar calendario académico (Admin)",
+ *     description="Permite configurar períodos, fechas límite y parmetros académicos (Solo Admin)",
+ *     tags={"Administrador"},
+ *     security={{"bearerAuth":{}}},
+ *     @OA\RequestBody(
+ *         required=true,
+ *         description="Configuración académica",
+ *         @OA\JsonContent(
+ *             type="object",
+ *             properties={
+ *                 @OA\Property(property="periodo_actual", type="string", example="2024-1"),
+ *                 @OA\Property(property="fecha_inicio_clases", type="string", format="date", example="2024-01-15"),
+ *                 @OA\Property(property="fecha_fin_clases", type="string", format="date", example="2024-05-30"),
+ *                 @OA\Property(property="fecha_limite_inscripcion", type="string", format="date", example="2024-01-22")
+ *             }
+ *         )
+ *     ),
+ *     @OA\Response(
+ *         response=200,
+ *         description="Configuración actualizada",
+ *         @OA\JsonContent(ref="#/components/schemas/SuccessResponse")
+ *     )
+ * )
+ */
 require_once __DIR__ . "/_common.php";
 api_set_common_headers("GET, POST, OPTIONS");
 api_handle_preflight();

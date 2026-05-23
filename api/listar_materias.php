@@ -1,4 +1,29 @@
 <?php
+/**
+ * @OA\Get(
+ *     path="/api/listar_materias.php",
+ *     summary="Listar todas las materias",
+ *     description="Obtiene el listado completo de materias disponibles",
+ *     tags={"Materias"},
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Response(
+ *         response=200,
+ *         description="Lista de materias obtenida correctamente",
+ *         @OA\JsonContent(
+ *             type="object",
+ *             properties={
+ *                 @OA\Property(property="ok", type="boolean", example=true),
+ *                 @OA\Property(property="materias", type="array", items={"$ref"="#/components/schemas/Materia"})
+ *             }
+ *         )
+ *     ),
+ *     @OA\Response(
+ *         response=401,
+ *         description="No autorizado",
+ *         @OA\JsonContent(ref="#/components/schemas/ErrorResponse")
+ *     )
+ * )
+ */
 require_once __DIR__ . "/_common.php";
 require_once __DIR__ . "/../configuracion/database.php";
 require_once __DIR__ . "/../middleware/AuthMiddleware.php";

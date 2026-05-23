@@ -1,0 +1,654 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "UNIMATCH Backend API",
+    "description": "API Backend para la gestión académica de UNIMATCH - Universidad de Cundinamarca",
+    "version": "1.0.0",
+    "contact": {
+      "name": "UNIMATCH Support",
+      "email": "soporte@unimatch.com"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://unimatch-backend-fid5.onrender.com",
+      "description": "Production Server"
+    },
+    {
+      "url": "http://localhost",
+      "description": "Local Development Server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "example": false
+          },
+          "error": {
+            "type": "string"
+          },
+          "mensaje": {
+            "type": "string"
+          }
+        }
+      },
+      "SuccessResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "example": true
+          },
+          "mensaje": {
+            "type": "string"
+          }
+        }
+      },
+      "Usuario": {
+        "type": "object",
+        "properties": {
+          "id_usuario": {
+            "type": "integer"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "correo": {
+            "type": "string",
+            "format": "email"
+          },
+          "nombre": {
+            "type": "string"
+          },
+          "rol": {
+            "type": "string",
+            "enum": ["estudiante", "profesor", "administrador"]
+          },
+          "programa": {
+            "type": "string"
+          },
+          "estado": {
+            "type": "string",
+            "enum": ["activo", "inactivo", "suspendido"]
+          }
+        }
+      },
+      "Materia": {
+        "type": "object",
+        "properties": {
+          "id_materia": {
+            "type": "integer"
+          },
+          "codigo": {
+            "type": "string"
+          },
+          "nombre": {
+            "type": "string"
+          },
+          "creditos": {
+            "type": "integer"
+          },
+          "descripcion": {
+            "type": "string"
+          },
+          "semestre": {
+            "type": "integer"
+          }
+        }
+      },
+      "Turno": {
+        "type": "object",
+        "properties": {
+          "id_turno": {
+            "type": "integer"
+          },
+          "id_materia": {
+            "type": "integer"
+          },
+          "dia": {
+            "type": "string"
+          },
+          "hora_inicio": {
+            "type": "string",
+            "format": "time"
+          },
+          "hora_fin": {
+            "type": "string",
+            "format": "time"
+          },
+          "salon": {
+            "type": "string"
+          },
+          "docente": {
+            "type": "string"
+          },
+          "cupos_disponibles": {
+            "type": "integer"
+          },
+          "cupos_totales": {
+            "type": "integer"
+          }
+        }
+      },
+      "Solicitud": {
+        "type": "object",
+        "properties": {
+          "id_solicitud": {
+            "type": "integer"
+          },
+          "id_usuario": {
+            "type": "integer"
+          },
+          "tipo": {
+            "type": "string",
+            "enum": ["permuta", "cambio_directo", "cancelacion", "cambio_grupo"]
+          },
+          "estado": {
+            "type": "string",
+            "enum": ["pendiente", "aprobada", "rechazada", "cancelada"]
+          },
+          "fecha_creacion": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "descripcion": {
+            "type": "string"
+          }
+        }
+      },
+      "Matricula": {
+        "type": "object",
+        "properties": {
+          "id_matricula": {
+            "type": "integer"
+          },
+          "id_usuario": {
+            "type": "integer"
+          },
+          "id_materia": {
+            "type": "integer"
+          },
+          "id_turno": {
+            "type": "integer"
+          },
+          "estado": {
+            "type": "string",
+            "enum": ["activa", "cancelada", "completada"]
+          },
+          "fecha_matricula": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/login.php": {
+      "post": {
+        "summary": "Autenticar usuario",
+        "description": "Autentica un usuario con correo y contraseña, retorna token JWT",
+        "tags": ["Autenticación"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["correo", "password"],
+                "properties": {
+                  "correo": {
+                    "type": "string",
+                    "format": "email",
+                    "example": "usuario@unimatch.edu.co"
+                  },
+                  "password": {
+                    "type": "string",
+                    "format": "password"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login exitoso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "token": {
+                      "type": "string"
+                    },
+                    "usuario": {
+                      "$ref": "#/components/schemas/Usuario"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Credenciales inválidas",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/listar_materias.php": {
+      "get": {
+        "summary": "Listar todas las materias",
+        "tags": ["Materias"],
+        "security": [{"bearerAuth": []}],
+        "responses": {
+          "200": {
+            "description": "Lista de materias",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "materias": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Materia"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/mis_materias.php": {
+      "get": {
+        "summary": "Obtener mis materias matriculadas",
+        "tags": ["Materias"],
+        "security": [{"bearerAuth": []}],
+        "responses": {
+          "200": {
+            "description": "Materias del usuario"
+          }
+        }
+      }
+    },
+    "/api/listar_turnos.php": {
+      "get": {
+        "summary": "Listar todos los turnos",
+        "tags": ["Turnos"],
+        "security": [{"bearerAuth": []}],
+        "responses": {
+          "200": {
+            "description": "Lista de turnos"
+          }
+        }
+      }
+    },
+    "/api/detalle_turno.php": {
+      "get": {
+        "summary": "Obtener detalles de un turno",
+        "tags": ["Turnos"],
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {
+            "name": "id_turno",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Detalles del turno"
+          }
+        }
+      }
+    },
+    "/api/crear_turno.php": {
+      "post": {
+        "summary": "Crear nuevo turno (Admin)",
+        "tags": ["Turnos"],
+        "security": [{"bearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["id_materia", "dia", "hora_inicio", "hora_fin", "salon"],
+                "properties": {
+                  "id_materia": {"type": "integer"},
+                  "dia": {"type": "string"},
+                  "hora_inicio": {"type": "string", "format": "time"},
+                  "hora_fin": {"type": "string", "format": "time"},
+                  "salon": {"type": "string"},
+                  "docente": {"type": "string"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Turno creado"
+          }
+        }
+      }
+    },
+    "/api/actualizar_turno.php": {
+      "post": {
+        "summary": "Actualizar turno",
+        "tags": ["Turnos"],
+        "security": [{"bearerAuth": []}],
+        "responses": {
+          "200": {
+            "description": "Turno actualizado"
+          }
+        }
+      }
+    },
+    "/api/matricular_materia.php": {
+      "post": {
+        "summary": "Matricular una materia",
+        "tags": ["Matrículas"],
+        "security": [{"bearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["id_materia", "id_turno"],
+                "properties": {
+                  "id_materia": {"type": "integer"},
+                  "id_turno": {"type": "integer"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Matrícula realizada"
+          }
+        }
+      }
+    },
+    "/api/cancelar_materia.php": {
+      "post": {
+        "summary": "Cancelar matrícula",
+        "tags": ["Matrículas"],
+        "security": [{"bearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["id_matricula"],
+                "properties": {
+                  "id_matricula": {"type": "integer"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Matrícula cancelada"
+          }
+        }
+      }
+    },
+    "/api/creditos_estudiante.php": {
+      "get": {
+        "summary": "Obtener créditos del estudiante",
+        "tags": ["Usuario"],
+        "security": [{"bearerAuth": []}],
+        "responses": {
+          "200": {
+            "description": "Información de créditos"
+          }
+        }
+      }
+    },
+    "/api/crear_solicitud.php": {
+      "post": {
+        "summary": "Crear solicitud de cambio académico",
+        "tags": ["Solicitudes"],
+        "security": [{"bearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["tipo_solicitud"],
+                "properties": {
+                  "tipo_solicitud": {
+                    "type": "string",
+                    "enum": ["cancelacion", "cambio_grupo", "cambio_materia", "nueva_inscripcion"]
+                  },
+                  "grupo_origen": {"type": "integer"},
+                  "grupo_destino": {"type": "integer"},
+                  "materia_origen": {"type": "integer"},
+                  "materia_destino": {"type": "integer"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Solicitud creada"
+          }
+        }
+      }
+    },
+    "/api/listar_solicitudes.php": {
+      "get": {
+        "summary": "Listar solicitudes del usuario",
+        "tags": ["Solicitudes"],
+        "security": [{"bearerAuth": []}],
+        "responses": {
+          "200": {
+            "description": "Lista de solicitudes"
+          }
+        }
+      }
+    },
+    "/api/opciones_solicitud.php": {
+      "get": {
+        "summary": "Obtener opciones disponibles",
+        "tags": ["Solicitudes"],
+        "security": [{"bearerAuth": []}],
+        "responses": {
+          "200": {
+            "description": "Opciones disponibles"
+          }
+        }
+      }
+    },
+    "/api/procesar_permutas.php": {
+      "post": {
+        "summary": "Procesar permuta",
+        "tags": ["Solicitudes"],
+        "security": [{"bearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id_solicitud_1": {"type": "integer"},
+                  "id_solicitud_2": {"type": "integer"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Permuta procesada"
+          }
+        }
+      }
+    },
+    "/api/perfil_usuario.php": {
+      "get": {
+        "summary": "Obtener perfil del usuario",
+        "tags": ["Usuario"],
+        "security": [{"bearerAuth": []}],
+        "responses": {
+          "200": {
+            "description": "Datos del perfil"
+          }
+        }
+      }
+    },
+    "/api/solicitar_recuperacion.php": {
+      "post": {
+        "summary": "Solicitar recuperación de contraseña",
+        "tags": ["Autenticación"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["correo"],
+                "properties": {
+                  "correo": {"type": "string", "format": "email"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Correo de recuperación enviado"
+          }
+        }
+      }
+    },
+    "/api/reset_password.php": {
+      "post": {
+        "summary": "Restablecer contraseña",
+        "tags": ["Autenticación"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["token", "nueva_password"],
+                "properties": {
+                  "token": {"type": "string"},
+                  "nueva_password": {"type": "string", "format": "password"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Contraseña restablecida"
+          }
+        }
+      }
+    },
+    "/api/admin_resumen.php": {
+      "get": {
+        "summary": "Resumen administrativo (Admin)",
+        "tags": ["Administrador"],
+        "security": [{"bearerAuth": []}],
+        "responses": {
+          "200": {
+            "description": "Resumen administrativo"
+          }
+        }
+      }
+    },
+    "/api/admin_solicitudes.php": {
+      "get": {
+        "summary": "Listar todas las solicitudes (Admin)",
+        "tags": ["Administrador"],
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {
+            "name": "estado",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["pendiente", "aprobada", "rechazada"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de solicitudes"
+          }
+        }
+      }
+    },
+    "/api/admin_configuracion_academica.php": {
+      "post": {
+        "summary": "Configurar calendario académico (Admin)",
+        "tags": ["Administrador"],
+        "security": [{"bearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "periodo_actual": {"type": "string"},
+                  "fecha_inicio_clases": {"type": "string", "format": "date"},
+                  "fecha_fin_clases": {"type": "string", "format": "date"},
+                  "fecha_limite_inscripcion": {"type": "string", "format": "date"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Configuración actualizada"
+          }
+        }
+      }
+    }
+  }
+}

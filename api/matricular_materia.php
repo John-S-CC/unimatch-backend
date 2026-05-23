@@ -1,4 +1,42 @@
 <?php
+/**
+ * @OA\Post(
+ *     path="/api/matricular_materia.php",
+ *     summary="Matricular una materia",
+ *     description="Permite a un estudiante matricularse en una materia y turno específico",
+ *     tags={"Matrículas"},
+ *     security={{"bearerAuth":{}}},
+ *     @OA\RequestBody(
+ *         required=true,
+ *         description="Datos de matrícula",
+ *         @OA\JsonContent(
+ *             type="object",
+ *             required={"id_materia", "id_turno"},
+ *             properties={
+ *                 @OA\Property(property="id_materia", type="integer", example=1),
+ *                 @OA\Property(property="id_turno", type="integer", example=5)
+ *             }
+ *         )
+ *     ),
+ *     @OA\Response(
+ *         response=200,
+ *         description="Matrícula realizada exitosamente",
+ *         @OA\JsonContent(
+ *             type="object",
+ *             properties={
+ *                 @OA\Property(property="ok", type="boolean", example=true),
+ *                 @OA\Property(property="mensaje", type="string", example="Matrícula registrada"),
+ *                 @OA\Property(property="id_matricula", type="integer", example=123)
+ *             }
+ *         )
+ *     ),
+ *     @OA\Response(
+ *         response=422,
+ *         description="Datos inválidos",
+ *         @OA\JsonContent(ref="#/components/schemas/ErrorResponse")
+ *     )
+ * )
+ */
 require_once __DIR__ . "/_common.php";
 api_set_common_headers("POST, OPTIONS");
 api_handle_preflight();

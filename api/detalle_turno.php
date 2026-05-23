@@ -1,4 +1,31 @@
 <?php
+/**
+ * @OA\Get(
+ *     path="/api/detalle_turno.php",
+ *     summary="Obtener detalles de un turno",
+ *     description="Retorna la información completa de un turno específico",
+ *     tags={"Turnos"},
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(
+ *         name="id_turno",
+ *         in="query",
+ *         description="ID del turno",
+ *         required=true,
+ *         @OA\Schema(type="integer")
+ *     ),
+ *     @OA\Response(
+ *         response=200,
+ *         description="Detalles del turno",
+ *         @OA\JsonContent(
+ *             type="object",
+ *             properties={
+ *                 @OA\Property(property="ok", type="boolean", example=true),
+ *                 @OA\Property(property="turno", ref="#/components/schemas/Turno")
+ *             }
+ *         )
+ *     )
+ * )
+ */
 require_once __DIR__ . "/_common.php";
 api_set_common_headers("GET, OPTIONS");
 api_handle_preflight();

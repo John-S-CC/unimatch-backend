@@ -1,4 +1,30 @@
 <?php
+/**
+ * @OA\Post(
+ *     path="/api/actualizar_turno.php",
+ *     summary="Actualizar turno de una materia",
+ *     description="Actualiza el turno de una materia matriculada por el estudiante",
+ *     tags={"Turnos"},
+ *     security={{"bearerAuth":{}}},
+ *     @OA\RequestBody(
+ *         required=true,
+ *         description="Datos del cambio de turno",
+ *         @OA\JsonContent(
+ *             type="object",
+ *             required={"id_matricula", "id_turno_nuevo"},
+ *             properties={
+ *                 @OA\Property(property="id_matricula", type="integer", example=123),
+ *                 @OA\Property(property="id_turno_nuevo", type="integer", example=8)
+ *             }
+ *         )
+ *     ),
+ *     @OA\Response(
+ *         response=200,
+ *         description="Turno actualizado",
+ *         @OA\JsonContent(ref="#/components/schemas/SuccessResponse")
+ *     )
+ * )
+ */
 require_once __DIR__ . "/_common.php";
 api_set_common_headers("POST, OPTIONS");
 api_handle_preflight();
