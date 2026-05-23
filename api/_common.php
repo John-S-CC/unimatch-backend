@@ -1,60 +1,64 @@
 <?php
+
 require_once __DIR__ . "/../configuracion/security.php";
 
-if (!function_exists("api_set_common_headers")) {    
+if (!function_exists("api_set_common_headers")) {
 
     function api_set_common_headers(string $methods = "GET, POST, OPTIONS"): void {
 
-    header_remove("Access-Control-Allow-Origin");
-    header_remove("Access-Control-Allow-Headers");
-    header_remove("Access-Control-Allow-Methods");
-    header_remove("Access-Control-Allow-Credentials");
-    header_remove("Vary");
+        header_remove("Access-Control-Allow-Origin");
+        header_remove("Access-Control-Allow-Headers");
+        header_remove("Access-Control-Allow-Methods");
+        header_remove("Access-Control-Allow-Credentials");
+        header_remove("Vary");
 
-    $origin = $_SERVER["HTTP_ORIGIN"] ?? "";
+        $origin = $_SERVER["HTTP_ORIGIN"] ?? "";
 
-    $allowedRaw = getenv("UNIMATCH_FRONTEND_ORIGINS")
-        ?: "https://unimatch-frontend.onrender.com";
+        $allowedRaw = getenv("UNIMATCH_FRONTEND_ORIGINS")
+            ?: "https://unimatch-frontend.onrender.com";
 
-    $allowed = array_filter(array_map("trim", explode(",", $allowedRaw)));
+        $allowed = array_filter(array_map("trim", explode(",", $allowedRaw)));
 
-    if ($origin && in_array($origin, $allowed, true)) {
+        if ($origin && in_array($origin, $allowed, true)) {
 
-        header("Access-Control-Allow-Origin: $origin");
-        header("Access-Control-Allow-Credentials: true");
-        header("Vary: Origin");
+            header("Access-Control-Allow-Origin: $origin");
+            header("Access-Control-Allow-Credentials: true");
+            header("Vary: Origin");
+        }
 
-    } elseif (!SecurityConfig::isProduction()) {
-
-        header("Access-Control-Allow-Origin: *");
-    }
-
-    header("Access-Control-Allow-Headers: Content-Type, Authorization");
-    header("Access-Control-Allow-Methods: $methods");
-    header("Content-Type: application/json; charset=UTF-8");
-
-    header("X-Content-Type-Options: nosniff");
-    header("X-Frame-Options: DENY");
-    header("Referrer-Policy: no-referrer");
-}
-
-  function api_handle_preflight(): void {
-
-    if (($_SERVER["REQUEST_METHOD"] ?? "") === "OPTIONS") {
-
-        header("Access-Control-Allow-Origin: https://unimatch-frontend.onrender.com");
         header("Access-Control-Allow-Headers: Content-Type, Authorization");
-        header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
-        header("Access-Control-Allow-Credentials: true");
-        header("Content-Length: 0");
+        header("Access-Control-Allow-Methods: $methods");
+        header("Content-Type: application/json; charset=UTF-8");
 
-        http_response_code(204);
-        exit;
+        // Security headers
+        header("X-Content-Type-Options: nosniff");
+        header("X-Frame-Options: DENY");
+        header("Referrer-Policy: no-referrer");
+        header("Permissions-Policy: geolocation=(), microphone=(), camera=()");
+
+        // HSTS solo en producción HTTPS
+        if (SecurityConfig::isProduction()) {
+            header("Strict-Transport-Security: max-age=31536000; includeSubDomains");
+        }
     }
-}
+
+    function api_handle_preflight(): void {
+
+        if (($_SERVER["REQUEST_METHOD"] ?? "") === "OPTIONS") {
+
+            api_set_common_headers();
+
+            header("Content-Length: 0");
+
+            http_response_code(204);
+            exit;
+        }
+    }
 
     function api_require_method(string $method): void {
+
         if (strtoupper($_SERVER["REQUEST_METHOD"] ?? "GET") !== strtoupper($method)) {
+
             api_json([
                 "ok" => false,
                 "mensaje" => "Método no permitido."
@@ -63,27 +67,53 @@ if (!function_exists("api_set_common_headers")) {
     }
 
     function api_json(array $payload, int $status = 200): void {
+
         http_response_code($status);
+
         echo json_encode($payload, JSON_UNESCAPED_UNICODE);
+
         exit;
     }
 
-    function api_error(Throwable $e, string $publicMessage = "No fue posible procesar la solicitud.", int $status = 500): void {
+    function api_error(
+        Throwable $e,
+        string $publicMessage = "No fue posible procesar la solicitud.",
+        int $status = 500
+    ): void {
+
+        // Log interno seguro
         SecurityConfig::logError($e);
-        api_json(["ok" => false, "mensaje" => $publicMessage], $status);
+
+        // Nunca exponer errores internos al cliente
+        api_json([
+            "ok" => false,
+            "mensaje" => $publicMessage
+        ], $status);
     }
 
     function api_read_input(): array {
+
         $raw = file_get_contents("php://input");
+
         if (!$raw) {
             return [];
         }
 
         $decoded = json_decode($raw, true);
+
+        if (json_last_error() !== JSON_ERROR_NONE) {
+
+            api_json([
+                "ok" => false,
+                "mensaje" => "JSON inválido."
+            ], 400);
+        }
+
         return is_array($decoded) ? $decoded : [];
     }
 
     function api_post_or_input(array $input, string $key, $default = null) {
+
         if (array_key_exists($key, $_POST)) {
             return $_POST[$key];
         }
@@ -96,11 +126,14 @@ if (!function_exists("api_set_common_headers")) {
     }
 
     function api_int_value(array $input, string $key): int {
+
         return (int) (api_post_or_input($input, $key, 0) ?: 0);
     }
 
     function api_connect_db(): mysqli {
+
         $db = new Database();
+
         $conn = $db->connect();
 
         if (!$conn) {
@@ -112,28 +145,42 @@ if (!function_exists("api_set_common_headers")) {
 }
 
 if (!function_exists("api_user_is_admin")) {
+
     function api_user_is_admin($usuario): bool {
+
         $rol = strtolower((string) ($usuario->rol ?? ""));
+
         return in_array($rol, ["admin", "administrador", "root"], true);
     }
 }
 
-
 if (!function_exists("api_allowed_email_domain")) {
+
     function api_allowed_email_domain(): string {
-        $domain = trim((string) (getenv("UNIMATCH_ALLOWED_EMAIL_DOMAIN") ?: "@unimatch.edu.co"));
-        return str_starts_with($domain, "@") ? strtolower($domain) : "@" . strtolower($domain);
+
+        $domain = trim((string) (
+            getenv("UNIMATCH_ALLOWED_EMAIL_DOMAIN")
+            ?: "@unimatch.edu.co"
+        ));
+
+        return str_starts_with($domain, "@")
+            ? strtolower($domain)
+            : "@" . strtolower($domain);
     }
 
     function api_email_institutional(string $correo): bool {
+
         $correo = strtolower(trim($correo));
+
         if (!filter_var($correo, FILTER_VALIDATE_EMAIL)) {
             return false;
         }
+
         return str_ends_with($correo, api_allowed_email_domain());
     }
 
     function api_valid_password_policy(string $password): bool {
+
         return strlen($password) >= 8
             && preg_match('/[A-Z]/', $password)
             && preg_match('/[a-z]/', $password)
