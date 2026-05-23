@@ -22,8 +22,14 @@ COPY composer.json composer.lock ./
 # Instalar dependencias
 RUN composer install --no-dev --optimize-autoloader
 
-# Copiar proyecto
-COPY . .
+# Copiar SOLO archivos necesarios
+COPY api ./api
+COPY configuracion ./configuracion
+COPY middleware ./middleware
+COPY docs ./docs
+
+COPY *.php ./
+COPY .htaccess ./
 
 # Usuario seguro
 RUN useradd -ms /bin/bash appuser && \
