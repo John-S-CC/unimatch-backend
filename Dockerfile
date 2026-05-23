@@ -27,6 +27,7 @@ COPY api ./api
 COPY configuracion ./configuracion
 COPY middleware ./middleware
 COPY docs ./docs
+COPY openapi.json ./
 
 COPY *.php ./
 COPY .htaccess ./
