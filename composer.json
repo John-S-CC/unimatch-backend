@@ -1,9 +1,14 @@
 {
     "require": {
-        "firebase/php-jwt": "^7.0",
+        "firebase/php-jwt": "^7.0.0",
         "zircote/swagger-php": "^4.5"
     },
     "scripts": {
-        "swagger:generate": "vendor\\bin\\openapi api/swagger_docs.php -o docs/openapi.json"
+        "swagger:generate": "vendor/bin/openapi api/swagger_docs.php -o docs/openapi.json"
+    },
+    "config": {
+        "platform": {
+            "php": "8.2.0"
+        }
     }
 }

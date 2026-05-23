@@ -1,6 +1,6 @@
 FROM php:8.2-apache
 
-# Instalar extensiones y herramientas necesarias
+# Dependencias necesarias
 RUN apt-get update && apt-get install -y \
     git \
     unzip \
@@ -8,29 +8,27 @@ RUN apt-get update && apt-get install -y \
     && docker-php-ext-install mysqli zip \
     && docker-php-ext-enable mysqli
 
-# Habilitar módulos Apache
+# Apache modules
 RUN a2enmod rewrite headers
 
-# Instalar Composer
+# Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Directorio de trabajo
 WORKDIR /var/www/html
 
-# Copiar archivos de Composer primero
+# Composer files
 COPY composer.json composer.lock ./
 
-# Instalar dependencias PHP
+# Instalar dependencias
 RUN composer install --no-dev --optimize-autoloader
 
-# Copiar el resto del proyecto
+# Copiar proyecto
 COPY . .
 
-# Crear usuario no root para mejorar seguridad
+# Usuario seguro
 RUN useradd -ms /bin/bash appuser && \
     chown -R appuser:appuser /var/www/html
 
-# Ejecutar contenedor con usuario seguro
 USER appuser
 
 EXPOSE 80
