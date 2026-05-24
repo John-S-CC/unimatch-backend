@@ -4,6 +4,9 @@ use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
  require_once __DIR__ . '/../vendor/autoload.php';
+ require_once __DIR__ . '/../vendor/phpmailer/phpmailer/src/Exception.php';
+require_once __DIR__ . '/../vendor/phpmailer/phpmailer/src/PHPMailer.php';
+require_once __DIR__ . '/../vendor/phpmailer/phpmailer/src/SMTP.php';
 
 class Mailer {
     public static function enviar(string $destinatario, string $asunto, string $html, ?string $textoPlano = null): bool {
