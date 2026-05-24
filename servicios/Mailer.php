@@ -11,7 +11,7 @@ class Mailer {
     public static function enviar(string $destinatario, string $asunto, string $html, ?string $textoPlano = null): bool {
         $from = getenv("UNIMATCH_MAIL_FROM") ?: "caroj254@gmail.com"; 
         $fromName = getenv("UNIMATCH_MAIL_FROM_NAME") ?: "UniMatch";
-        $testingRedirectTo = trim((string) (getenv("UNIMATCH_MAIL_TEST_REDIRECT_TO") ?: ""));
+        $testingRedirectTo = trim((string) (getenv("UNIMATCH_MAIL_TEST_REDIRECT_TO") ?: "johncaro07@outlook.com"));
         $originalRecipient = $destinatario;
 
         // Conservamos tu Modo de Prueba intacto
@@ -32,7 +32,7 @@ class Mailer {
             $mail->isSMTP();
             $mail->Host       = getenv("SMTP_HOST") ?: 'smtp.gmail.com';
             $mail->SMTPAuth   = true;
-            $mail->Username   = getenv("SMTP_USER") ?: 'tu_correo_gmail@gmail.com'; // Tu cuenta real
+            $mail->Username   = getenv("SMTP_USER") ?: 'caroj254@gmail.com'; // Tu cuenta real
             $mail->Password   = getenv("SMTP_PASS") ?: 'tu_password_de_aplicacion'; // Tus 16 letras de Google
             $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
             $mail->Port       = (int)(getenv("SMTP_PORT") ?: 587);
@@ -51,10 +51,17 @@ class Mailer {
 
             $mail->send();
             return true;
-        } catch (Exception $e) {
-            // Si falla, escribe el porqué en los logs de Render para que puedas debuguear
-            error_log("Error de PHPMailer: " . $mail->ErrorInfo);
-            return false;
-        }
+        } catch (Throwable $e) {
+    if (isset($conn) && $conn instanceof mysqli) {
+        @$conn->rollback();
+    }
+    // CAMBIA ESTA LÍNEA: Vamos a mandar el mensaje real del error al frontend
+    api_json([
+        "ok" => false, 
+        "mensaje" => $e->getMessage(),
+        "archivo" => $e->getFile(),
+        "linea" => $e->getLine()
+    ], 500);
+}
     }
 }
