@@ -1,6 +1,5 @@
 FROM php:8.2-apache
 
-
 RUN apt-get update && apt-get install -y \
     git \
     unzip \
@@ -10,7 +9,6 @@ RUN apt-get update && apt-get install -y \
     && a2enmod rewrite headers
 
 WORKDIR /var/www/html
-
 
 COPY composer.json composer.lock ./
 COPY api ./api
@@ -22,11 +20,12 @@ COPY openapi.json ./
 COPY *.php ./
 COPY .htaccess ./
 
-# 2. Instalar Composer (Ahora sí tiene acceso a todos los archivos para mapearlos)
+# Instalar Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# 3. Ejecutar la instalación AQUÍ (Generará la carpeta vendor con todo adentro)
-RUN composer install --no-dev --optimize-autoloader && \
+# Limpiamos la caché de Composer interna, instalamos librerías y creamos el usuario seguro
+RUN composer clear-cache && \
+    composer install --no-dev --optimize-autoloader && \
     useradd -ms /bin/bash appuser && \
     chown -R appuser:appuser /var/www/html
 
