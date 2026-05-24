@@ -1,6 +1,9 @@
 <?php
 
-// Requerimos ÚNICAMENTE el cargador oficial de Composer
+// 1. Declaramos el uso estricto del Namespace de Resend
+use Resend;
+
+// 2. Requerimos el autoloader de Composer
 require_once __DIR__ . '/../vendor/autoload.php';
 
 class Mailer {
@@ -9,6 +12,7 @@ class Mailer {
         $testingRedirectTo = trim((string) (getenv("UNIMATCH_MAIL_TEST_REDIRECT_TO") ?: "johncaro07@outlook.com"));
         $originalRecipient = $destinatario;
 
+        // Conservamos tu Modo de Prueba intacto
         if ($testingRedirectTo !== "") {
             $destinatario = $testingRedirectTo;
             $html = "<p><strong>Modo prueba UniMatch:</strong> este correo fue solicitado para "
@@ -18,6 +22,7 @@ class Mailer {
 
         $textoPlano = $textoPlano ?: strip_tags(str_replace(["<br>", "<br/>", "<br />"], "\n", $html));
 
+        // Obtenemos la API Key desde las variables de entorno de Render
         $apiKey = getenv("RESEND_API_KEY");
         if (!$apiKey) {
             error_log("Error: RESEND_API_KEY no está configurada.");
@@ -25,8 +30,8 @@ class Mailer {
         }
 
         try {
-            // Llamada limpia y directa delegada al autoloader
-            $resend = \Resend::client($apiKey);
+            // LLAMADA MODERNA: Al haber declarado 'use Resend' arriba, invocamos la clase directamente
+            $resend = Resend::client($apiKey);
 
             $resend->emails->send([
                 'from' => "{$fromName} <onboarding@resend.dev>",
