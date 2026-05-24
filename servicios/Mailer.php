@@ -36,9 +36,9 @@ class Mailer {
             $mail->Username   = getenv("SMTP_USER") ?: 'caroj254@gmail.com';
             $mail->Password   = getenv("SMTP_PASS") ?: 'prnxemvcmdpijdih';
             
-            // CAMBIO AQUÍ: Forzamos cifrado SSL en el puerto 465 (Suele saltarse mejor los bloqueos de Docker)
+            // CAMBIO AQUÍ: Forzamos cifrado SSL en el puerto 2525 (puerto alternativo común para SMTP con SSL)
             $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS; 
-            $mail->Port       = 587; 
+            $mail->Port       = 2525; 
             
             $mail->CharSet    = 'UTF-8';
 
