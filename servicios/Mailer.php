@@ -1,12 +1,7 @@
 <?php
 
-// 1. Forzamos la carga del autoloader general por si acaso
+// Requerimos ÚNICAMENTE el cargador oficial de Composer
 require_once __DIR__ . '/../vendor/autoload.php';
-
-// 2. CARGA MANUAL DEFENSIVA: Forzamos a PHP a leer el archivo de inicialización de Resend
-if (file_exists(__DIR__ . '/../vendor/resend/resend-php/src/Resend.php')) {
-    require_once __DIR__ . '/../vendor/resend/resend-php/src/Resend.php';
-}
 
 class Mailer {
     public static function enviar(string $destinatario, string $asunto, string $html, ?string $textoPlano = null): bool {
@@ -14,7 +9,6 @@ class Mailer {
         $testingRedirectTo = trim((string) (getenv("UNIMATCH_MAIL_TEST_REDIRECT_TO") ?: "johncaro07@outlook.com"));
         $originalRecipient = $destinatario;
 
-        // Conservamos tu Modo de Prueba intacto
         if ($testingRedirectTo !== "") {
             $destinatario = $testingRedirectTo;
             $html = "<p><strong>Modo prueba UniMatch:</strong> este correo fue solicitado para "
@@ -24,7 +18,6 @@ class Mailer {
 
         $textoPlano = $textoPlano ?: strip_tags(str_replace(["<br>", "<br/>", "<br />"], "\n", $html));
 
-        // Obtenemos la API Key desde las variables de entorno de Render
         $apiKey = getenv("RESEND_API_KEY");
         if (!$apiKey) {
             error_log("Error: RESEND_API_KEY no está configurada.");
@@ -32,7 +25,7 @@ class Mailer {
         }
 
         try {
-            // Invoca la clase usando su espacio de nombres completo estructurado
+            // Llamada limpia y directa delegada al autoloader
             $resend = \Resend::client($apiKey);
 
             $resend->emails->send([
