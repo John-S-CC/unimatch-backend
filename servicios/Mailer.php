@@ -1,16 +1,7 @@
 <?php
 
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
-
- require_once __DIR__ . '/../vendor/autoload.php';
- require_once __DIR__ . '/../vendor/phpmailer/phpmailer/src/Exception.php';
-require_once __DIR__ . '/../vendor/phpmailer/phpmailer/src/PHPMailer.php';
-require_once __DIR__ . '/../vendor/phpmailer/phpmailer/src/SMTP.php';
-
 class Mailer {
     public static function enviar(string $destinatario, string $asunto, string $html, ?string $textoPlano = null): bool {
-        $from = getenv("UNIMATCH_MAIL_FROM") ?: "caroj254@gmail.com"; 
         $fromName = getenv("UNIMATCH_MAIL_FROM_NAME") ?: "UniMatch";
         $testingRedirectTo = trim((string) (getenv("UNIMATCH_MAIL_TEST_REDIRECT_TO") ?: "johncaro07@outlook.com"));
         $originalRecipient = $destinatario;
@@ -25,56 +16,50 @@ class Mailer {
 
         $textoPlano = $textoPlano ?: strip_tags(str_replace(["<br>", "<br/>", "<br />"], "\n", $html));
 
-        // Inicializamos PHPMailer
-        $mail = new PHPMailer(true);
+        // Obtenemos la API Key desde las variables de entorno de Render
+        $apiKey = getenv("RESEND_API_KEY");
+        if (!$apiKey) {
+            error_log("Error: RESEND_API_KEY no está configurada.");
+            return false;
+        }
 
         try {
-            // Configuración del Servidor SMTP
-            $mail->isSMTP();
-            $mail->Host       = getenv("SMTP_HOST") ?: 'smtp.gmail.com';
-            $mail->SMTPAuth   = true;
-            $mail->Username   = getenv("SMTP_USER") ?: 'caroj254@gmail.com';
-            $mail->Password   = getenv("SMTP_PASS") ?: 'prnxemvcmdpijdih';
-            
-            // CAMBIO AQUÍ: Forzamos cifrado SSL en el puerto 2525 (puerto alternativo común para SMTP con SSL)
-            $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS; 
-            $mail->Port       = 2525; 
-            
-            $mail->CharSet    = 'UTF-8';
+            // Inicializamos el cliente de Resend (Viaja por HTTP seguro, saltándose el Firewall)
+            $resend = Resend::client($apiKey);
 
-            // Opciones avanzadas para evitar caídas de certificados locales en Docker
-            $mail->SMTPOptions = [
-                'ssl' => [
-                    'verify_peer'       => false,
-                    'verify_peer_name'  => false,
-                    'allow_self_signed' => true
-                ]
-            ];
+            $resend->emails->send([
+                // NOTA: Resend gratis exige que el remitente sea 'onboarding@resend.dev'
+                'from' => "{$fromName} <onboarding@resend.dev>",
+                'to' => [$destinatario],
+                'subject' => $asunto,
+                'html' => $html,
+                'text' => $textoPlano,
+            ]);
 
-            // Destinatarios
-            $mail->setFrom($mail->Username, $fromName);
-            $mail->addAddress($destinatario);
-            $mail->addReplyTo($mail->Username, $fromName);
-
-            // Contenido del Correo
-            $mail->isHTML(true);
-            $mail->Subject = $asunto;
-            $mail->Body    = $html;
-            $mail->AltBody = $textoPlano;
-
-            $mail->send();
             return true;
-        } catch (Throwable $e) {
-    if (isset($conn) && $conn instanceof mysqli) {
-        @$conn->rollback();
+        } catch (\Throwable $e) {
+            // Mantener tu rollback de base de datos por si falla
+            if (isset($conn) && $conn instanceof mysqli) {
+                @$conn->rollback();
+            }
+            
+            // Retornamos el error real en formato JSON para inspección en el frontend
+            header('Content-Type: application/json');
+            http_response_code(500);
+            echo json_with_escape([
+                "ok" => false, 
+                "mensaje" => "Error en API Resend: " . $e->getMessage(),
+                "linea" => $e->getLine(),
+                "archivo" => $e->getFile()
+            ]);
+            exit;
+        }
     }
-    // CAMBIA ESTA LÍNEA: Vamos a mandar el mensaje real del error al frontend
-    api_json([
-        "ok" => false, 
-        "mensaje" => $e->getMessage(),
-        "linea" => $e->getLine(),
-        "archivo" => $e->getFile()
-    ], 500);
 }
-}
+
+// Función auxiliar para formatear la respuesta igual a tu api_json
+if (!function_exists('json_with_escape')) {
+    function json_with_escape($data) {
+        return json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     }
+}
