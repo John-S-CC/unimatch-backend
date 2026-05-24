@@ -41,7 +41,7 @@ if (!api_user_is_admin($usuario)) {
 
 try {
     $conn = api_connect_db();
-  //  CalendarioAcademico::sincronizarSolicitudesVencidas($conn);
+    CalendarioAcademico::sincronizarSolicitudesVencidas($conn);
 
     $sql = "
         SELECT
@@ -59,7 +59,7 @@ try {
             u.nombre AS estudiante,
             u.correo,
             COALESCE(u.programa, '') AS programa,
-            COALESCE(u.extension, COALESCE(u.extencion, 'Extensión Facatativá')) AS extension,
+            COALESCE(u.extension, 'Extensión Facatativá') AS extension,
             mo.nombre AS nombre_materia_origen,
             md.nombre AS nombre_materia_destino
         FROM solicitudes s
