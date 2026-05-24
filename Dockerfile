@@ -24,6 +24,7 @@ RUN composer install --no-dev --optimize-autoloader
 
 # Copiar SOLO archivos necesarios
 COPY api ./api
+COPY servicios ./servicios
 COPY configuracion ./configuracion
 COPY middleware ./middleware
 COPY docs ./docs
