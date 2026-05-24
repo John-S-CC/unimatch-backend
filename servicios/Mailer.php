@@ -1,7 +1,12 @@
 <?php
 
-// Forzamos la carga del autoloader global de Composer para que registre a Resend en la memoria de PHP
+// 1. Forzamos la carga del autoloader general por si acaso
 require_once __DIR__ . '/../vendor/autoload.php';
+
+// 2. CARGA MANUAL DEFENSIVA: Forzamos a PHP a leer el archivo de inicialización de Resend
+if (file_exists(__DIR__ . '/../vendor/resend/resend-php/src/Resend.php')) {
+    require_once __DIR__ . '/../vendor/resend/resend-php/src/Resend.php';
+}
 
 class Mailer {
     public static function enviar(string $destinatario, string $asunto, string $html, ?string $textoPlano = null): bool {
@@ -27,7 +32,7 @@ class Mailer {
         }
 
         try {
-            // CAMBIO AQUÍ: Usamos la ruta absoluta de la clase (\Resend) para que PHP no se maree con Docker
+            // Invoca la clase usando su espacio de nombres completo estructurado
             $resend = \Resend::client($apiKey);
 
             $resend->emails->send([
