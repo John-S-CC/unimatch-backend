@@ -26,15 +26,27 @@ class Mailer {
         $mail = new PHPMailer(true);
 
         try {
-            // Configuración del Servidor SMTP (Usando variables de entorno de Render)
+            // Configuración del Servidor SMTP
             $mail->isSMTP();
             $mail->Host       = getenv("SMTP_HOST") ?: 'smtp.gmail.com';
             $mail->SMTPAuth   = true;
-            $mail->Username   = getenv("SMTP_USER") ?: 'caroj254@gmail.com'; // Tu cuenta real
-            $mail->Password   = getenv("SMTP_PASS") ?: 'tu_password_de_aplicacion'; // Tus 16 letras de Google
-            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-            $mail->Port       = (int)(getenv("SMTP_PORT") ?: 587);
+            $mail->Username   = getenv("SMTP_USER") ?: 'caroj254@gmail.com';
+            $mail->Password   = getenv("SMTP_PASS") ?: 'prnxemvcmdpijdih';
+            
+            // CAMBIO AQUÍ: Forzamos cifrado SSL en el puerto 465 (Suele saltarse mejor los bloqueos de Docker)
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS; 
+            $mail->Port       = 465; 
+            
             $mail->CharSet    = 'UTF-8';
+
+            // Opciones avanzadas para evitar caídas de certificados locales en Docker
+            $mail->SMTPOptions = [
+                'ssl' => [
+                    'verify_peer'       => false,
+                    'verify_peer_name'  => false,
+                    'allow_self_signed' => true
+                ]
+            ];
 
             // Destinatarios
             $mail->setFrom($mail->Username, $fromName);
@@ -45,7 +57,7 @@ class Mailer {
             $mail->isHTML(true);
             $mail->Subject = $asunto;
             $mail->Body    = $html;
-            $mail->AltBody = $textoPlano; // Versión en texto plano para lectores básicos
+            $mail->AltBody = $textoPlano;
 
             $mail->send();
             return true;
