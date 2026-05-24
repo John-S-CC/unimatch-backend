@@ -59,9 +59,9 @@ class Mailer {
     api_json([
         "ok" => false, 
         "mensaje" => $e->getMessage(),
-        "archivo" => $e->getFile(),
-        "linea" => $e->getLine()
+        "linea" => $e->getLine(),
+        "archivo" => $e->getFile()
     ], 500);
 }
-    }
 }
+    }
