@@ -99,9 +99,16 @@ try {
     Mailer::enviar($correo, "Recuperación de contraseña - UniMatch", $html);
 
     api_json($respuesta);
-} catch (Throwable $e) {
+}  catch (Throwable $e) {
     if (isset($conn) && $conn instanceof mysqli) {
         @$conn->rollback();
     }
-    api_error($e, "No fue posible procesar la recuperación de contraseña.");
+    
+    // Rompemos el misterio mandando el mensaje crudo directo al frontend:
+    api_json([
+        "ok" => false,
+        "mensaje" => $e->getMessage(),
+        "archivo" => $e->getFile(),
+        "linea" => $e->getLine()
+    ], 500);
 }
