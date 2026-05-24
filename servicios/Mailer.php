@@ -1,5 +1,8 @@
 <?php
 
+// Forzamos la carga del autoloader global de Composer para que registre a Resend en la memoria de PHP
+require_once __DIR__ . '/../vendor/autoload.php';
+
 class Mailer {
     public static function enviar(string $destinatario, string $asunto, string $html, ?string $textoPlano = null): bool {
         $fromName = getenv("UNIMATCH_MAIL_FROM_NAME") ?: "UniMatch";
@@ -24,11 +27,10 @@ class Mailer {
         }
 
         try {
-            // Inicializamos el cliente de Resend (Viaja por HTTP seguro, saltándose el Firewall)
-            $resend = Resend::client($apiKey);
+            // CAMBIO AQUÍ: Usamos la ruta absoluta de la clase (\Resend) para que PHP no se maree con Docker
+            $resend = \Resend::client($apiKey);
 
             $resend->emails->send([
-                // NOTA: Resend gratis exige que el remitente sea 'onboarding@resend.dev'
                 'from' => "{$fromName} <onboarding@resend.dev>",
                 'to' => [$destinatario],
                 'subject' => $asunto,
@@ -38,12 +40,10 @@ class Mailer {
 
             return true;
         } catch (\Throwable $e) {
-            // Mantener tu rollback de base de datos por si falla
             if (isset($conn) && $conn instanceof mysqli) {
                 @$conn->rollback();
             }
             
-            // Retornamos el error real en formato JSON para inspección en el frontend
             header('Content-Type: application/json');
             http_response_code(500);
             echo json_with_escape([
@@ -57,7 +57,6 @@ class Mailer {
     }
 }
 
-// Función auxiliar para formatear la respuesta igual a tu api_json
 if (!function_exists('json_with_escape')) {
     function json_with_escape($data) {
         return json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
