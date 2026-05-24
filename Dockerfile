@@ -19,7 +19,7 @@ WORKDIR /var/www/html
 # Composer files
 COPY composer.json composer.lock ./
 
-# Instalar dependencias
+# Instalar dependencias (Se genera la carpeta vendor)
 RUN composer install --no-dev --optimize-autoloader
 
 # Copiar SOLO archivos necesarios
@@ -33,10 +33,12 @@ COPY openapi.json ./
 COPY *.php ./
 COPY .htaccess ./
 
-# Usuario seguro
+# --- EL CAMBIO ESTÁ AQUÍ ---
+# Creamos el usuario seguro y le damos permisos a TODO (incluyendo la carpeta vendor instalada)
 RUN useradd -ms /bin/bash appuser && \
     chown -R appuser:appuser /var/www/html
 
+# Ahora sí cambiamos al usuario seguro para correr la app
 USER appuser
 
 EXPOSE 80
