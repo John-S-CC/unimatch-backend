@@ -38,7 +38,7 @@ class Mailer {
             
             // CAMBIO AQUÍ: Forzamos cifrado SSL en el puerto 465 (Suele saltarse mejor los bloqueos de Docker)
             $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS; 
-            $mail->Port       = 465; 
+            $mail->Port       = 587; 
             
             $mail->CharSet    = 'UTF-8';
 
