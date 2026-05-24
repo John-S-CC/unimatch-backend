@@ -3,9 +3,7 @@
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-// Si usas Composer, asegúrate de que vendor/autoload.php se cargue en tu proyecto
-// Si no, puedes requerirlos aquí mismo:
-// require_once __DIR__ . '/../vendor/autoload.php';
+ require_once __DIR__ . '/../vendor/autoload.php';
 
 class Mailer {
     public static function enviar(string $destinatario, string $asunto, string $html, ?string $textoPlano = null): bool {
