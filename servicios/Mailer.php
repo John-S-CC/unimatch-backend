@@ -1,11 +1,5 @@
 <?php
 
-// 1. Declaramos el uso estricto del Namespace de Resend
-use Resend;
-
-// 2. Requerimos el autoloader de Composer
-require_once __DIR__ . '/../vendor/autoload.php';
-
 class Mailer {
     public static function enviar(string $destinatario, string $asunto, string $html, ?string $textoPlano = null): bool {
         $fromName = getenv("UNIMATCH_MAIL_FROM_NAME") ?: "UniMatch";
@@ -29,39 +23,61 @@ class Mailer {
             return false;
         }
 
-        try {
-            // LLAMADA MODERNA: Al haber declarado 'use Resend' arriba, invocamos la clase directamente
-            $resend = Resend::client($apiKey);
+        // Estructuramos los datos exactamente como los pide la API de Resend
+        $data = [
+            'from' => "{$fromName} <onboarding@resend.dev>",
+            'to' => [$destinatario],
+            'subject' => $asunto,
+            'html' => $html,
+            'text' => $textoPlano
+        ];
 
-            $resend->emails->send([
-                'from' => "{$fromName} <onboarding@resend.dev>",
-                'to' => [$destinatario],
-                'subject' => $asunto,
-                'html' => $html,
-                'text' => $textoPlano,
-            ]);
+        // Iniciamos la petición cURL nativa de PHP
+        $ch = curl_init('https://api.resend.com/emails');
+        
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        
+        // Enviamos las cabeceras de autorización HTTP requeridas
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Authorization: Bearer ' . $apiKey,
+            'Content-Type: application/json'
+        ]);
 
-            return true;
-        } catch (\Throwable $e) {
-            if (isset($conn) && $conn instanceof mysqli) {
-                @$conn->rollback();
-            }
-            
-            header('Content-Type: application/json');
-            http_response_code(500);
-            echo json_with_escape([
-                "ok" => false, 
-                "mensaje" => "Error en API Resend: " . $e->getMessage(),
-                "linea" => $e->getLine(),
-                "archivo" => $e->getFile()
-            ]);
-            exit;
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        
+        if (curl_errno($ch)) {
+            $error_msg = curl_error($ch);
+            curl_close($ch);
+            self::responderError("Error de conexión cURL: " . $error_msg, __LINE__);
         }
-    }
-}
+        
+        curl_close($ch);
 
-if (!function_exists('json_with_escape')) {
-    function json_with_escape($data) {
-        return json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        // Si la API responde con un código exitoso (200 o 201), el correo se envió
+        if ($httpCode === 200 || $httpCode === 201) {
+            return true;
+        }
+
+        // Si responde otra cosa, capturamos el error de la API
+        self::responderError("Error en API Resend (HTTP {$httpCode}): " . $response, __LINE__);
+    }
+
+    private static function responderError(string $mensaje, int $linea): void {
+        if (isset($conn) && $conn instanceof mysqli) {
+            @$conn->rollback();
+        }
+        
+        header('Content-Type: application/json');
+        http_response_code(500);
+        echo json_encode([
+            "ok" => false, 
+            "mensaje" => $mensaje,
+            "linea" => $linea,
+            "archivo" => __FILE__
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
     }
 }
